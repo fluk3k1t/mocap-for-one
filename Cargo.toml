@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-egui = "0.29.1"
-eframe = "0.29.1"
-opencv = "0.93.0"
-parking_lot = "0.12"
-image = "0.24"
-crossbeam = "0.8"
+eframe = "0.33.2"
+opencv = "0.97.2"
+chrono = "0.4.42"
+
+[profile.dev]
+opt-level = 3
