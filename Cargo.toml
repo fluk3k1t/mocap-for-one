@@ -5,8 +5,15 @@ edition = "2024"
 
 [dependencies]
 eframe = "0.33.2"
+egui_dock = "0.18"
 opencv = "0.97.2"
 chrono = "0.4.42"
+memmap2 = "0.9.9"
+
+[dependencies.pyo3]
+version = "0.27.1"
+# this is necessary to automatically initialize the Python interpreter
+features = ["auto-initialize"]
 
 [profile.dev]
 opt-level = 3
