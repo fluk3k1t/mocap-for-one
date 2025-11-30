@@ -3,13 +3,19 @@ use eframe::{
     egui::{self, Id, Modal, Window},
     epaint::image,
 };
-use mocap_for_one::{ThreadingCam, enumerate_cameras};
+use egui_file::FileDialog;
+use mocap_for_one::{MMAPCam, ThreadingCam, enumerate_cameras};
 use opencv::{
     core::{Mat, MatTraitConst, MatTraitConstManual},
+    objdetect::{CharucoBoard, CharucoDetector},
     videoio::{CAP_ANY, VideoCapture, VideoCaptureTrait},
 };
 use std::sync::{Arc, Mutex};
 use std::{collections::BTreeMap, thread, time::Duration};
+use std::{
+    ffi::OsStr,
+    path::{Path, PathBuf},
+};
 
 struct TCamBuffers {
     tcams: BTreeMap<String, ThreadingCam>,
@@ -33,6 +39,10 @@ impl egui_dock::TabViewer for TCamBuffers {
                     ui.centered_and_justified(|ui| {
                         if let Some(tcam) = self.tcams.get(tab) {
                             if let Some(img) = tcam.get_latest_image() {
+                                let cd = CharucoDetector::new_def(
+                                    &CharucoBoard::default().unwrap(),
+                                );
+
                                 let texture = ui.ctx().load_texture(
                                     format!("cam_frame_{}", tab),
                                     img.clone(),
@@ -42,8 +52,6 @@ impl egui_dock::TabViewer for TCamBuffers {
                                 // Calculate scaled size to fit the available area while maintaining aspect ratio
                                 let available_size = ui.available_size();
                                 let img_size = img.size;
-                                let img_aspect =
-                                    img_size[0] as f32 / img_size[1] as f32;
 
                                 let scale_x =
                                     available_size.x / img_size[0] as f32;
@@ -142,6 +150,9 @@ struct App {
     tcam_buffers: TCamBuffers,
     tree: egui_dock::DockState<String>,
     open_camera_modal_is_open: bool,
+    open_unity_camera_modal_is_open: bool,
+    opened_unity_camera_path: Option<PathBuf>,
+    open_unity_camera_file_dialog: Option<FileDialog>,
     enum_cameras: Vec<(i32, String)>,
     selected_camera: Option<(i32, String)>,
 }
@@ -199,6 +210,8 @@ impl eframe::App for App {
                 });
         }
 
+        if self.open_camera_modal_is_open {}
+
         egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             egui::MenuBar::new().ui(ui, |ui| {
                 if ui.button("Add Video Capture").clicked() {
@@ -206,14 +219,48 @@ impl eframe::App for App {
                         .expect("Failed to enumerate cameras");
                     self.open_camera_modal_is_open = true;
                 }
+
+                if ui.button("Add Unity Camera").clicked() {
+                    let mut dialog = FileDialog::open_file(
+                        self.opened_unity_camera_path.clone(),
+                    );
+                    dialog.open();
+                    self.open_unity_camera_file_dialog = Some(dialog);
+                    // self.open_unity_camera_modal_is_open = true;
+                }
                 // if ui
                 // ui.color_edit_button_rgb(&mut [0.0, 255.0, 0.0])
-                if ui.button("Run").clicked() {}
+                // if ui.button("Run").clicked() {}
 
-                if ui.button("Save").clicked() {}
+                // if ui.button("Save").clicked() {}
                 // {}
             });
         });
+
+        if let Some(dialog) = &mut self.open_unity_camera_file_dialog {
+            dialog.show(ctx);
+            if dialog.selected() {
+                if let Some(path) = dialog.path() {
+                    self.opened_unity_camera_path = Some(path.to_path_buf());
+
+                    let unity_cam = MMAPCam::new(path).unwrap();
+                    let tcam = ThreadingCam::new(unity_cam);
+                    self.tcam_buffers.tcams.insert(
+                        path.file_name()
+                            .and_then(OsStr::to_str)
+                            .unwrap_or("unity_cam")
+                            .to_string(),
+                        tcam,
+                    );
+                    self.tree.push_to_focused_leaf(
+                        path.file_name()
+                            .and_then(OsStr::to_str)
+                            .unwrap_or("unity_cam")
+                            .to_string(),
+                    );
+                }
+            }
+        }
 
         egui_dock::DockArea::new(&mut self.tree)
             .style(egui_dock::Style::from_egui(ctx.style().as_ref()))
@@ -234,6 +281,9 @@ impl App {
             },
             tree,
             open_camera_modal_is_open: false,
+            open_unity_camera_modal_is_open: false,
+            opened_unity_camera_path: None,
+            open_unity_camera_file_dialog: None,
             enum_cameras: vec![],
             selected_camera: None,
         }
