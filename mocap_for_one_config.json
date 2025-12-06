@@ -1,0 +1,19 @@
+{
+  "unity_camera_modal": {
+    "opened_path": null
+  },
+  "camera_streams": {
+    "streams": {
+      "MacBook Air Camera": {
+        "Capture": {
+          "index": 1201
+        }
+      },
+      "MacBook Airカメラ": {
+        "Capture": {
+          "index": 1200
+        }
+      }
+    }
+  }
+}

@@ -1,5 +1,3 @@
-use opencv::videoio::{CAP_ANY, VideoCapture, VideoCaptureTraitConst};
-
 use pyo3::ffi::c_str;
 use pyo3::prelude::*;
 
