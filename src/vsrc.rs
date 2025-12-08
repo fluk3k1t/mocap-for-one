@@ -63,7 +63,7 @@ pub enum VideoSource {
     Capture(VideoCapture),
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum VideoSourceConfig {
     MMAP { path: String },
     Capture { index: i32 },

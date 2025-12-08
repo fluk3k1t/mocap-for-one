@@ -1,5 +1,6 @@
 use eframe::egui::{self, Context, Id, Modal};
-use egui_dock::DockState;
+// use egui_dock::DockState;
+// use egui_elm::prelude::*;
 use mocap_for_one::{CameraStream, VideoSourceConfig, enumerate_cameras};
 use serde::{Deserialize, Serialize};
 
@@ -8,6 +9,10 @@ pub struct VideoCaptureModal {
     pub open: bool,
     pub enum_cameras: Vec<(i32, String)>,
     pub selected: Option<(i32, String)>,
+}
+
+pub enum VideoCaptureModalEffect {
+    OnOpenCamera(CameraStream),
 }
 
 impl VideoCaptureModal {
@@ -27,17 +32,14 @@ impl VideoCaptureModal {
         self.open = true;
     }
 
-    pub fn show(
-        &mut self,
-        ctx: &Context,
-        tcam_buffers: &mut crate::widgets::CameraStreams,
-        tree: &mut DockState<String>,
-    ) {
+    pub fn show(&mut self, ctx: &Context) -> Option<VideoCaptureModalEffect> {
         if !self.open {
-            return;
+            return None;
         }
 
-        let _ = Modal::new(Id::new("Open Camera Modal")).show(ctx, |ui| {
+        let mut ret = None;
+
+        Modal::new(Id::new("Open Camera Modal")).show(ctx, |ui| {
             ui.heading("Select Camera Device");
 
             egui::ComboBox::from_label("")
@@ -71,10 +73,15 @@ impl VideoCaptureModal {
 
                             match CameraStream::new(config) {
                                 Ok(tcam) => {
-                                    tcam_buffers
-                                        .streams
-                                        .insert(name.clone(), tcam);
-                                    tree.push_to_focused_leaf(name.clone());
+                                    // tcam_buffers
+                                    //     .streams
+                                    //     .insert(name.clone(), tcam);
+                                    // tree.push_to_focused_leaf(name.clone());
+                                    ret = Some(
+                                        VideoCaptureModalEffect::OnOpenCamera(
+                                            tcam,
+                                        ),
+                                    );
                                 }
                                 Err(err) => {
                                     eprintln!(
@@ -90,5 +97,7 @@ impl VideoCaptureModal {
                 },
             );
         });
+
+        ret
     }
 }

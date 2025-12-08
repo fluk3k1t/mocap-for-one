@@ -1,19 +1,5 @@
 {
   "unity_camera_modal": {
-    "opened_path": null
-  },
-  "camera_streams": {
-    "streams": {
-      "MacBook Air Camera": {
-        "Capture": {
-          "index": 1201
-        }
-      },
-      "MacBook Airカメラ": {
-        "Capture": {
-          "index": 1200
-        }
-      }
-    }
+    "opened_path": "/Users/flukekit/workspace/calibit/unity_cam_mmap"
   }
 }

@@ -1,5 +1,5 @@
 use eframe::egui;
-use egui_dock::DockState;
+// use egui_dock::DockState;
 use egui_file::FileDialog;
 use mocap_for_one::{CameraStream, VideoSourceConfig};
 use serde::{Deserialize, Serialize};
@@ -50,36 +50,36 @@ impl UnityCameraModal {
     pub fn show(
         &mut self,
         ctx: &egui::Context,
-        camera_streams: &mut crate::widgets::CameraStreams,
-        tree: &mut DockState<String>,
+        // camera_streams: &mut crate::widgets::CameraStreams,
+        // tree: &mut DockState<String>,
     ) {
-        if let Some(d) = &mut self.dialog {
-            d.show(ctx);
-            if d.selected() {
-                if let Some(path) = d.path() {
-                    self.opened_path = Some(path.to_path_buf());
-                    let config = VideoSourceConfig::MMAP {
-                        path: path.to_string_lossy().into_owned(),
-                    };
+        // if let Some(d) = &mut self.dialog {
+        //     d.show(ctx);
+        //     if d.selected() {
+        //         if let Some(path) = d.path() {
+        //             self.opened_path = Some(path.to_path_buf());
+        //             let config = VideoSourceConfig::MMAP {
+        //                 path: path.to_string_lossy().into_owned(),
+        //             };
 
-                    match CameraStream::new(config) {
-                        Ok(stream) => {
-                            let name = path
-                                .file_name()
-                                .and_then(OsStr::to_str)
-                                .unwrap_or("unity_cam")
-                                .to_string();
-                            camera_streams.streams.insert(name.clone(), stream);
-                            tree.push_to_focused_leaf(name);
-                        }
-                        Err(err) => {
-                            eprintln!(
-                                "Failed to open Unity camera source: {err}"
-                            );
-                        }
-                    }
-                }
-            }
-        }
+        //             match CameraStream::new(config) {
+        //                 Ok(stream) => {
+        //                     let name = path
+        //                         .file_name()
+        //                         .and_then(OsStr::to_str)
+        //                         .unwrap_or("unity_cam")
+        //                         .to_string();
+        //                     // camera_streams.streams.insert(name.clone(), stream);
+        //                     // tree.push_to_focused_leaf(name);
+        //                 }
+        //                 Err(err) => {
+        //                     eprintln!(
+        //                         "Failed to open Unity camera source: {err}"
+        //                     );
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
     }
 }
