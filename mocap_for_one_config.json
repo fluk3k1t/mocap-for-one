@@ -1,5 +1,25 @@
 {
   "unity_camera_modal": {
-    "opened_path": "/Users/flukekit/workspace/calibit/unity_cam_mmap"
+    "opened_path": null
+  },
+  "workload": {
+    "opencv_cams": [
+      {
+        "name": "MacBook Airカメラ",
+        "video_source_config": {
+          "Capture": {
+            "index": 1200
+          }
+        }
+      },
+      {
+        "name": "Camo Camera",
+        "video_source_config": {
+          "Capture": {
+            "index": 1201
+          }
+        }
+      }
+    ]
   }
 }

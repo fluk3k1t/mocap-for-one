@@ -1,18 +1,18 @@
 use crate::widgets::{UnityCameraModal, UnityCameraModalConfig};
 use anyhow::{Context, Result};
+use mocap_for_one::{VideoSource, WorkLoad, WorkLoadConfig};
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
 
-#[derive(Clone, Serialize, Deserialize, Default)]
-#[serde(default)]
+#[derive(Clone, Serialize, Deserialize)]
+// #[serde(default)]
 pub struct AppConfig {
     pub unity_camera_modal: UnityCameraModalConfig,
-    // #[serde(alias = "tcam_buffers")]
-    // pub camera_streams: CameraStreamsConfig,
+    pub workload: WorkLoadConfig,
 }
 
 pub struct AppState {
-    // pub camera_streams: CameraStreams,
+    pub workload: WorkLoad,
     pub unity_modal: UnityCameraModal,
 }
 
@@ -41,6 +41,7 @@ impl TryFrom<AppConfig> for AppState {
         // let camera_streams = CameraStreams::try_from(config.camera_streams)?;
         Ok(Self {
             // camera_streams,
+            workload: config.workload.try_into()?,
             unity_modal: config.unity_camera_modal.into(),
         })
     }
@@ -49,7 +50,7 @@ impl TryFrom<AppConfig> for AppState {
 impl From<&AppState> for AppConfig {
     fn from(state: &AppState) -> Self {
         Self {
-            // camera_streams: (&state.camera_streams).into(),
+            workload: (&state.workload).into(),
             unity_camera_modal: (&state.unity_modal).into(),
         }
     }
@@ -58,7 +59,7 @@ impl From<&AppState> for AppConfig {
 impl Default for AppState {
     fn default() -> Self {
         Self {
-            // camera_streams: CameraStreams::new(),
+            workload: WorkLoad::new(),
             unity_modal: UnityCameraModal::new(),
         }
     }

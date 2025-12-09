@@ -26,7 +26,6 @@ impl VideoCaptureModal {
 
     pub fn open(&mut self) {
         if let Ok(list) = enumerate_cameras() {
-            // println!()
             self.enum_cameras = list;
         }
         self.open = true;
@@ -71,7 +70,7 @@ impl VideoCaptureModal {
                             let config =
                                 VideoSourceConfig::Capture { index: *index };
 
-                            match CameraStream::new(config) {
+                            match CameraStream::new(name.clone(), config) {
                                 Ok(tcam) => {
                                     // tcam_buffers
                                     //     .streams

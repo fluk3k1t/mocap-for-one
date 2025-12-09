@@ -12,13 +12,14 @@ use crate::{VideoSource, VideoSourceConfig};
 #[derive(Debug)]
 pub struct CameraStream {
     join_handle: thread::JoinHandle<()>,
+    pub name: String,
     // shared_img: Arc<Mutex<Option<egui::ColorImage>>>,
     r: watch::Receiver<Option<ColorImage>>,
     pub video_source_config: VideoSourceConfig,
 }
 
 impl CameraStream {
-    pub fn new(config: VideoSourceConfig) -> Result<Self> {
+    pub fn new(name: String, config: VideoSourceConfig) -> Result<Self> {
         // let shared_img = Arc::new(Mutex::new(None));
         // let shared_img_clone = Arc::clone(&shared_img);
         let video_source_config = config.clone();
@@ -43,6 +44,7 @@ impl CameraStream {
         });
 
         Ok(Self {
+            name,
             join_handle,
             r: r.clone(),
             video_source_config,

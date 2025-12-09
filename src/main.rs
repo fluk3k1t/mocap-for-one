@@ -16,14 +16,16 @@ mod widgets;
 use mocap_for_one::workload::WorkLoad;
 use widgets::VideoCaptureModal;
 
-use crate::widgets::video_capture_modal::VideoCaptureModalEffect;
+use crate::widgets::{
+    VideoViewer, video_capture_modal::VideoCaptureModalEffect,
+};
 
 struct App {
     state: AppState,
     // tree: egui_dock::DockState<String>,
     video_modal: VideoCaptureModal,
     status_message: Option<String>,
-    workload: WorkLoad,
+    // workload: WorkLoad,
 }
 
 impl eframe::App for App {
@@ -31,12 +33,9 @@ impl eframe::App for App {
         // show camera open modal if requested
         self.video_modal.show(ctx).map(|eff| match eff {
             VideoCaptureModalEffect::OnOpenCamera(cam) => {
-                self.workload.add_camera_stream(cam);
+                self.state.workload.add_camera_stream(cam);
             }
         });
-        // egui::CentralPanel::default().show(ctx, |ui| {
-
-        // });
 
         egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             egui::MenuBar::new().ui(ui, |ui| {
@@ -48,19 +47,15 @@ impl eframe::App for App {
                 //     self.state.unity_modal.open();
                 // }
 
-                // if ui.button("Save Config").clicked() {
-                //     self.status_message = match save_state_to_disk(&self.state)
-                //     {
-                //         Ok(()) => Some("Config saved.".to_owned()),
-                //         Err(err) => {
-                //             Some(format!("Failed to save config: {}", err))
-                //         }
-                //     };
-                // }
-
-                // if let Some(message) = &self.status_message {
-                //     ui.label(message);
-                // }
+                if ui.button("Save Config").clicked() {
+                    self.status_message = match save_state_to_disk(&self.state)
+                    {
+                        Ok(()) => Some("Config saved.".to_owned()),
+                        Err(err) => {
+                            Some(format!("Failed to save config: {}", err))
+                        }
+                    };
+                }
             });
 
             // Tabs::new(3).show(ui, |ui, state| {
@@ -69,34 +64,143 @@ impl eframe::App for App {
             // });
         });
 
-        egui::CentralPanel::default().show(ctx, |ui_central| {
-            let mut idx = 0;
-            let tab = Tabs::new(self.workload.opencv_cams.len() as i32).show(
-                ui_central,
-                |ui, state| {
-                    idx = state.index();
-                    // ui.label(format!("{:?}", state.index()));
-                    for (index, opencv_cam) in
-                        self.workload.opencv_cams.iter().enumerate()
+        egui::CentralPanel::default().show(ctx, |ui| {
+            let tab = Tabs::new(self.state.workload.opencv_cams.len() as i32)
+                .show(ui, |ui, state| {
+                    if let Some(opencv_cam) = self
+                        .state
+                        .workload
+                        .opencv_cams
+                        .get(state.index() as usize)
                     {
-                        if (index as i32) == state.index() {
-                            ui.add(
-                                egui::Label::new(format!("{:?}", opencv_cam))
-                                    .selectable(false),
-                            );
-                            // ui_central.label("jj");
-                            // ui_central
-                            //     .add(egui::Label::new("jj").selectable(false));
-                            // egui::CentralPanel::default().show(ctx, |ui| {
-                            //     ui.label("jj");
-                            // });
-                        }
+                        ui.add(
+                            egui::Label::new(opencv_cam.stream.name.clone())
+                                .selectable(false),
+                        );
                     }
-                },
-            );
-            ui_central.separator();
-            ui_central.label(format!("{}", idx));
-            println!("{:?}", tab.selected());
+                });
+
+            if let Some(selected_tab) = tab.selected() {
+                if let Some(selected_opencv_cam) =
+                    self.state.workload.opencv_cams.get(selected_tab as usize)
+                {
+                    VideoViewer::new().show(ui, selected_opencv_cam);
+                }
+            }
+
+            // ui.separator();
+
+            // let total_width = ui.available_width();
+            //         let image_width = total_width * 0.8;
+            //         let config_width = total_width * 0.2;
+
+            //         let available_height = ui.available_height();
+            //         ui.horizontal(|ui| {
+            //             ui.allocate_ui_with_layout(
+            //                 egui::Vec2::new(image_width, available_height),
+            //                 egui::Layout::top_down(egui::Align::Center),
+            //                 |ui| {
+            //                     ui.centered_and_justified(|ui| {
+            //                         if let Some(stream) = self.streams.get(tab) {
+            //                             if let Some(img) = stream.latest_image() {
+            //                                 let texture = ui.ctx().load_texture(
+            //                                     format!("cam_frame_{}", tab),
+            //                                     img.clone(),
+            //                                     Default::default(),
+            //                                 );
+
+            //                                 let img_size = img.size;
+            //                                 let available = egui::Vec2::new(
+            //                                     image_width,
+            //                                     available_height,
+            //                                 );
+
+            //                                 let scale_x = available.x / img_size[0] as f32;
+            //                                 let scale_y = available.y / img_size[1] as f32;
+            //                                 let scale = scale_x.min(scale_y).min(1.0);
+
+            //                                 let display_size = egui::Vec2::new(
+            //                                     img_size[0] as f32 * scale,
+            //                                     img_size[1] as f32 * scale,
+            //                                 );
+
+            //                                 ui.image(egui::ImageSource::Texture(
+            //                                     egui::load::SizedTexture::new(
+            //                                         texture.id(),
+            //                                         display_size,
+            //                                     ),
+            //                                 ));
+            //                             } else {
+            //                                 ui.centered_and_justified(|ui| {
+            //                                     ui.label("No frame available yet");
+            //                                 });
+            //                             }
+            //                         }
+            //                     });
+            //                 },
+            //             );
+
+            //             ui.separator();
+
+            //             ui.allocate_ui_with_layout(
+            //                 egui::Vec2::new(config_width, ui.available_height()),
+            //                 egui::Layout::top_down(egui::Align::LEFT),
+            //                 |ui| {
+            //                     ui.heading("Camera Config");
+            //                     ui.separator();
+
+            //                     ui.label("Camera Settings:");
+            //                     ui.add(
+            //                         egui::Slider::new(&mut 50.0, 0.0..=100.0)
+            //                             .text("Brightness"),
+            //                     );
+            //                     ui.add(
+            //                         egui::Slider::new(&mut 50.0, 0.0..=100.0)
+            //                             .text("Contrast"),
+            //                     );
+            //                     ui.add(
+            //                         egui::Slider::new(&mut 50.0, 0.0..=100.0)
+            //                             .text("Saturation"),
+            //                     );
+            //                     ui.add(
+            //                         egui::Slider::new(&mut 30.0, 1.0..=60.0).text("FPS"),
+            //                     );
+
+            //                     ui.separator();
+
+            //                     ui.label("Display Settings:");
+            //                     ui.checkbox(&mut false, "Show crosshair");
+            //                     ui.checkbox(&mut false, "Show grid");
+            //                     ui.checkbox(&mut true, "Auto-fit image");
+
+            //                     ui.separator();
+
+            //                     ui.label("Recording:");
+            //                     if ui.button("Start Recording").clicked() {
+            //                         // TODO: Implement recording
+            //                     }
+            //                     if ui.button("Take Screenshot").clicked() {
+            //                         // TODO: Implement screenshot
+            //                     }
+
+            //                     ui.separator();
+
+            //                     ui.label(format!("Camera: {}", tab));
+            //                     if let Some(stream) = self.streams.get(tab) {
+            //                         if let Some(img) = stream.latest_image() {
+            //                             let img_size = img.size;
+            //                             ui.label(format!(
+            //                                 "Resolution: {}x{}",
+            //                                 img_size[0], img_size[1]
+            //                             ));
+            //                         }
+            //                     }
+            //                 },
+            //             );
+            //         });
+            // ui.
+            // ui_central.label(format!("{}", idx));
+            // println!("{:?}", tab.selected());
         });
 
         // show unity file dialog if active
@@ -124,7 +228,11 @@ impl eframe::App for App {
 
 impl App {
     fn new() -> Result<Self> {
-        let state = load_state_from_disk()?;
+        let state = if let Ok(state) = load_state_from_disk() {
+            state
+        } else {
+            AppState::default()
+        };
         // Reconstruct dock tree from loaded cameras
         // let mut tree = egui_dock::DockState::new(vec![]);
         // for name in state.camera_streams.streams.keys() {
@@ -133,7 +241,7 @@ impl App {
 
         Ok(Self {
             state,
-            workload: WorkLoad::new(),
+            // workload: WorkLoad::new(),
             // tree,
             video_modal: VideoCaptureModal::new(),
             status_message: None,
