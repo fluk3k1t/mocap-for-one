@@ -1,6 +1,10 @@
 use std::thread;
 
+use opencv::aruco::{calibrate_camera_charuco, calibrate_camera_charuco_def};
+use opencv::core::Ptr;
+use opencv::prelude::MatTraitConst;
 use opencv::{
+    aruco::interpolate_corners_charuco_def,
     core::{Point2f, Point3f, Scalar, Size, Vector},
     imgcodecs,
     objdetect::{
@@ -128,7 +132,20 @@ impl OpenCvCamera {
                     )
                     .expect("Failed to detect charuco board");
 
-                println!("{:?}", marker_corners);
+                // 検知できたマーカーとcharucoボードの幾何から残りのマーカーを補完する
+                if marker_ids.len() > 0 {
+                    interpolate_corners_charuco_def(
+                        &mut marker_corners,
+                        &mut marker_ids,
+                        &frame,
+                        &Ptr::new(charuco_board_clone.clone()),
+                        &mut charuco_corners,
+                        &mut charuco_ids,
+                    )
+                    .expect("Failed to interpolate charuco corners");
+                }
+
+                // println!("{:?}", marker_corners);
 
                 draw_detected_markers(
                     &mut frame,
@@ -137,6 +154,24 @@ impl OpenCvCamera {
                     Scalar::new(0.0, 255.0, 0.0, 0.0),
                 )
                 .expect("Failed to draw detected markers");
+
+                let mut camera_matrix = Mat::default();
+                let mut dist_coeffs = Mat::default();
+
+                // if charuco_corners.size().unwrap().width < 4 {
+                //     continue;
+                // }
+                // calibrate_camera_charuco_def(
+                //     &mut charuco_corners,
+                //     &mut charuco_ids,
+                //     &Ptr::new(charuco_board_clone.clone()),
+                //     frame.size().unwrap(),
+                //     &mut camera_matrix,
+                //     &mut dist_coeffs,
+                // )
+                // .expect("Failed to calibrate camera");
+
+                println!("{:?}", camera_matrix);
 
                 s.send(frame).expect("Failed to send frame");
             }
