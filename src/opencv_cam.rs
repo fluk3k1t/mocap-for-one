@@ -1,7 +1,9 @@
+use std::fs::File;
 use std::thread;
 
+use anyhow::Result;
 use opencv::aruco::{calibrate_camera_charuco, calibrate_camera_charuco_def};
-use opencv::core::Ptr;
+use opencv::core::{MatTraitConstManual, Ptr, VectorToVec};
 use opencv::prelude::MatTraitConst;
 use opencv::{
     aruco::interpolate_corners_charuco_def,
@@ -22,7 +24,63 @@ use serde::{Deserialize, Serialize};
 
 use crate::{CameraStream, CameraStreamConfig, VideoSourceConfig};
 
-pub type CharucoMarker = (Vector<Vector<Point2f>>, Vector<i32>);
+#[derive(Clone, Debug)]
+pub struct CameraParameter {
+    pub camera_matrix: Mat,
+    pub dist_coeffs: Mat,
+}
+
+// カメラパラメータ、歪みパラメータのMatはserdeでシリアライズできないので、
+// Vec<u8>に変換して保存する
+#[derive(Serialize, Deserialize, Clone)]
+pub struct CameraParameterNum {
+    pub camera_matrix: Vec<u8>,
+    pub dist_coeffs: Vec<u8>,
+}
+
+impl TryInto<CameraParameterNum> for &CameraParameter {
+    type Error = opencv::Error;
+
+    fn try_into(self) -> opencv::Result<CameraParameterNum> {
+        let camera_matrix =
+            self.camera_matrix.data_bytes()?.iter().map(|f| *f).collect();
+
+        let dist_coeffs =
+            self.dist_coeffs.data_bytes()?.iter().map(|f| *f).collect();
+
+        Ok(CameraParameterNum {
+            camera_matrix,
+            dist_coeffs,
+        })
+    }
+}
+
+impl TryInto<CameraParameter> for &CameraParameterNum {
+    type Error = opencv::Error;
+
+    fn try_into(self) -> opencv::Result<CameraParameter> {
+        let camera_matrix =
+            Mat::new_rows_cols_with_data(3, 3, self.camera_matrix.as_slice())?
+                .try_clone()?;
+
+        let dist_coeffs =
+            Mat::new_rows_cols_with_data(1, 5, self.dist_coeffs.as_slice())?
+                .try_clone()?;
+
+        Ok(CameraParameter {
+            camera_matrix,
+            dist_coeffs,
+        })
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct CharucoMarker {
+    pub marker_corners: Vector<Vector<Point2f>>,
+    pub marker_ids: Vector<i32>,
+    pub charuco_corners: Mat,
+    pub charuco_ids: Mat,
+}
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct OpenCvCameraConfig {
@@ -33,7 +91,8 @@ pub struct OpenCvCameraConfig {
 #[derive(Debug)]
 pub struct OpenCvCamera {
     // pub stream: CameraStream,
-    charuco_board: Option<CharucoBoard>,
+    pub charuco_board: CharucoBoard,
+    // charuco_detector: CharucoDetector,
     r: tokio::sync::watch::Receiver<Mat>,
     r_charuco_markers: tokio::sync::watch::Receiver<CharucoMarker>,
     pub camera_stream_config: CameraStreamConfig,
@@ -43,18 +102,7 @@ impl TryFrom<OpenCvCameraConfig> for OpenCvCamera {
     type Error = anyhow::Error;
 
     fn try_from(config: OpenCvCameraConfig) -> Result<Self, Self::Error> {
-        // let stream = config.camera_stream_config.try_into()?;
-        let (s, r) = tokio::sync::watch::channel(Mat::default());
-        let (s_charuco_markers, r_charuco_markers) =
-            tokio::sync::watch::channel((Vector::new(), Vector::new()));
-
-        Ok(Self {
-            // stream,
-            charuco_board: None,
-            r,
-            r_charuco_markers,
-            camera_stream_config: config.camera_stream_config,
-        })
+        Ok(OpenCvCamera::new(config.camera_stream_config.try_into()?))
     }
 }
 
@@ -104,10 +152,17 @@ impl OpenCvCamera {
             .unwrap();
 
         let charuco_board_clone = charuco_board.clone();
+        let charuco_detector = CharucoDetector::new_def(&charuco_board_clone)
+            .expect("Failed to create charuco detector");
 
         let (s, r) = tokio::sync::watch::channel(Mat::default());
         let (s_charuco_markers, r_charuco_markers) =
-            tokio::sync::watch::channel((Vector::new(), Vector::new()));
+            tokio::sync::watch::channel(CharucoMarker {
+                marker_corners: Vector::new(),
+                marker_ids: Vector::new(),
+                charuco_corners: Mat::default(),
+                charuco_ids: Mat::default(),
+            });
 
         thread::spawn(move || {
             let charuco_detector =
@@ -129,7 +184,7 @@ impl OpenCvCamera {
 
         Self {
             // stream,
-            charuco_board: Some(charuco_board),
+            charuco_board: charuco_board,
             r,
             r_charuco_markers,
             camera_stream_config,
@@ -157,21 +212,18 @@ impl OpenCvCamera {
             Self::detect_charuco(&frame, charuco_detector, charuco_board)
                 .expect("Failed to detect charuco");
 
-        // draw_detected_markers(
-        //     &mut frame,
-        //     &marker_corners,
-        //     &marker_ids,
-        //     Scalar::new(0.0, 255.0, 0.0, 0.0),
-        // )
-        // .expect("Failed to draw detected markers");
-
         s.send(frame).expect("Failed to send frame");
         s_charuco_markers
-            .send((marker_corners, marker_ids))
-            .expect("Failed to send charuco corners");
+            .send(CharucoMarker {
+                marker_corners,
+                marker_ids,
+                charuco_corners,
+                charuco_ids,
+            })
+            .expect("Failed to send charuco markers");
     }
 
-    fn detect_charuco(
+    pub fn detect_charuco(
         frame: &Mat,
         charuco_detector: &CharucoDetector,
         charuco_board: &CharucoBoard,
@@ -203,6 +255,32 @@ impl OpenCvCamera {
         }
 
         Ok((marker_corners, marker_ids, charuco_corners, charuco_ids))
+    }
+
+    pub fn calibrate_camera(
+        &self,
+        charuco_corners: &mut Vector<Mat>,
+        charuco_ids: &mut Vector<Mat>,
+        image_size: Size,
+    ) -> Result<CameraParameter> {
+        let mut camera_matrix = Mat::default();
+        let mut dist_coeffs = Mat::default();
+
+        if let Ok(_) = calibrate_camera_charuco_def(
+            charuco_corners,
+            charuco_ids,
+            &Ptr::new(self.charuco_board.clone()),
+            image_size,
+            &mut camera_matrix,
+            &mut dist_coeffs,
+        ) {
+            Ok(CameraParameter {
+                camera_matrix,
+                dist_coeffs,
+            })
+        } else {
+            Err(anyhow::anyhow!("Failed to calibrate camera"))
+        }
     }
 }
 

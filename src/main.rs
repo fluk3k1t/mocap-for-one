@@ -77,7 +77,11 @@ impl eframe::App for App {
                     {
                         ui.add(
                             egui::Label::new(
-                                opencv_cam.camera_stream_config.name.clone(),
+                                opencv_cam
+                                    .opencv_camera
+                                    .camera_stream_config
+                                    .name
+                                    .clone(),
                             )
                             .selectable(false),
                         );
@@ -85,8 +89,11 @@ impl eframe::App for App {
                 });
 
             if let Some(selected_tab) = tab.selected() {
-                if let Some(selected_opencv_cam) =
-                    self.state.workload.opencv_cams.get(selected_tab as usize)
+                if let Some(selected_opencv_cam) = self
+                    .state
+                    .workload
+                    .opencv_cams
+                    .get_mut(selected_tab as usize)
                 {
                     let mut mat = selected_opencv_cam.get_latest_frame();
 
@@ -95,13 +102,13 @@ impl eframe::App for App {
                         return;
                     }
 
-                    let (charuco_corners, marker_ids) =
+                    let charuco_marker =
                         selected_opencv_cam.get_latest_charuco_markers();
 
                     draw_detected_markers(
                         &mut mat,
-                        &charuco_corners,
-                        &marker_ids,
+                        &charuco_marker.marker_corners,
+                        &charuco_marker.marker_ids,
                         Scalar::new(0.0, 255.0, 0.0, 0.0),
                     )
                     .expect("Failed to draw detected markers");
@@ -109,14 +116,34 @@ impl eframe::App for App {
                     let img = mat_to_color_image(mat)
                         .expect("Failed to convert mat to color image");
 
-                    VideoViewer::new().show(ui, &img).map(|eff| match eff {
-                        VideoViewerEffect::OnClose => {
-                            self.state
-                                .workload
-                                .opencv_cams
-                                .remove(selected_tab as usize);
+                    let eff = VideoViewer::new().show(
+                        ui,
+                        &img,
+                        selected_opencv_cam.on_calibration,
+                    );
+
+                    if let Some(eff) = eff {
+                        match eff {
+                            VideoViewerEffect::OnClose => {
+                                self.state
+                                    .workload
+                                    .opencv_cams
+                                    .remove(selected_tab as usize);
+                            }
+                            VideoViewerEffect::OnStartCalibration => {
+                                selected_opencv_cam.on_calibration = true;
+                            }
+                            VideoViewerEffect::OnCaptureFrame => {
+                                selected_opencv_cam
+                                    .capture_current_frame_with_annotated();
+                            }
+                            VideoViewerEffect::OnStopCalibration => {
+                                selected_opencv_cam.on_calibration = false;
+                                let _ = selected_opencv_cam
+                                    .calibrate_with_captured_frames();
+                            }
                         }
-                    });
+                    };
                 }
             }
         });

@@ -1,4 +1,4 @@
-use eframe::egui::{self, ColorImage};
+use eframe::egui::{self, Color32, ColorImage, RichText};
 use mocap_for_one::{OpenCvCamera, mat_to_color_image};
 use opencv::{
     core::MatTraitConst, core::Scalar, objdetect::draw_detected_markers,
@@ -6,6 +6,9 @@ use opencv::{
 
 pub enum VideoViewerEffect {
     OnClose,
+    OnStartCalibration,
+    OnCaptureFrame,
+    OnStopCalibration,
 }
 
 pub struct VideoViewer {}
@@ -19,6 +22,7 @@ impl VideoViewer {
         &mut self,
         ui: &mut egui::Ui,
         color_img: &ColorImage,
+        on_calibration: bool,
     ) -> Option<VideoViewerEffect> {
         let mut ret = None;
 
@@ -33,27 +37,6 @@ impl VideoViewer {
                 egui::Layout::top_down(egui::Align::Center),
                 |ui| {
                     ui.centered_and_justified(|ui| {
-                        // let mut mat = opencv_cam.get_latest_frame();
-
-                        // if mat.empty() {
-                        //     ui.label("No frame available yet");
-                        //     return;
-                        // }
-
-                        // let (charuco_corners, marker_ids) =
-                        //     opencv_cam.get_latest_charuco_markers();
-
-                        // draw_detected_markers(
-                        //     &mut mat,
-                        //     &charuco_corners,
-                        //     &marker_ids,
-                        //     Scalar::new(0.0, 255.0, 0.0, 0.0),
-                        // )
-                        // .expect("Failed to draw detected markers");
-
-                        // let img = mat_to_color_image(mat)
-                        //     .expect("Failed to convert mat to color image");
-
                         let texture = ui.ctx().load_texture(
                             format!("cam_frame_"),
                             color_img.clone(),
@@ -79,11 +62,6 @@ impl VideoViewer {
                                 display_size,
                             ),
                         ));
-                        // } else {
-                        //     ui.centered_and_justified(|ui| {
-                        //         ui.label("No frame available yet");
-                        //     });
-                        // }
                     });
                 },
             );
@@ -94,12 +72,32 @@ impl VideoViewer {
                 egui::Vec2::new(config_width, ui.available_height()),
                 egui::Layout::top_down(egui::Align::LEFT),
                 |ui| {
+                    ui.heading("Camera Config");
+                    ui.separator();
+
                     if ui.button("Close").clicked() {
                         ret = Some(VideoViewerEffect::OnClose);
                     }
 
-                    ui.heading("Camera Config");
-                    ui.separator();
+                    if ui
+                        .button(
+                            RichText::new("Start Calibration")
+                                .color(Color32::GREEN),
+                        )
+                        .clicked()
+                    {
+                        ret = Some(VideoViewerEffect::OnStartCalibration);
+                    }
+
+                    if on_calibration {
+                        if ui.button("Capture Frame").clicked() {
+                            ret = Some(VideoViewerEffect::OnCaptureFrame);
+                        }
+
+                        if ui.button("Stop Calibration").clicked() {
+                            ret = Some(VideoViewerEffect::OnStopCalibration);
+                        }
+                    }
 
                     ui.label("Camera Settings:");
                     ui.add(
