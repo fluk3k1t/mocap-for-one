@@ -58,6 +58,7 @@ impl WorkLoad {
     }
 }
 
+#[derive(Clone)]
 struct FrameAnnotated {
     frame: Mat,
     charuco_corners: Mat,
@@ -155,5 +156,19 @@ impl OpenCvCameraModel {
             serde_json::from_str(&serialized)?;
         self.camera_parameter = Some((&camera_parameter_num).try_into()?);
         Ok(())
+    }
+}
+
+impl Clone for OpenCvCameraModel {
+    fn clone(&self) -> Self {
+        Self {
+            opencv_camera: self.opencv_camera.clone(),
+            on_calibration: self.on_calibration,
+            captured_frame_annotated_vec: self
+                .captured_frame_annotated_vec
+                .clone(),
+            camera_parameter: self.camera_parameter.clone(),
+            camera_parameter_path: self.camera_parameter_path.clone(),
+        }
     }
 }

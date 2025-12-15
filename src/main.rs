@@ -122,6 +122,12 @@ impl eframe::App for App {
                         selected_opencv_cam.on_calibration,
                     );
 
+                    if selected_opencv_cam.on_calibration {
+                        egui::Window::new("Calibration").show(ctx, |ui| {
+                            ui.label("Calibration");
+                        });
+                    }
+
                     if let Some(eff) = eff {
                         match eff {
                             VideoViewerEffect::OnClose => {

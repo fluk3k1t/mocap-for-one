@@ -23,6 +23,16 @@
             }
           }
         }
+      },
+      {
+        "camera_stream_config": {
+          "name": "MacBook Air Camera",
+          "video_source_config": {
+            "Capture": {
+              "index": 1200
+            }
+          }
+        }
       }
     ]
   }

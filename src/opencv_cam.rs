@@ -88,7 +88,7 @@ pub struct OpenCvCameraConfig {
     // pub charuco_board: CharucoBoard,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct OpenCvCamera {
     // pub stream: CameraStream,
     pub charuco_board: CharucoBoard,

@@ -1,6 +1,6 @@
 use crate::widgets::{UnityCameraModal, UnityCameraModalConfig};
 use anyhow::{Context, Result};
-use mocap_for_one::{VideoSource, WorkLoad, WorkLoadConfig};
+use mocap_for_one::{OpenCvCameraModel, VideoSource, WorkLoad, WorkLoadConfig};
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
 
@@ -14,6 +14,7 @@ pub struct AppConfig {
 pub struct AppState {
     pub workload: WorkLoad,
     pub unity_modal: UnityCameraModal,
+    pub on_calibration: Option<OpenCvCameraModel>,
 }
 
 pub fn serialize_app_state<W: Write>(
@@ -43,6 +44,7 @@ impl TryFrom<AppConfig> for AppState {
             // camera_streams,
             workload: config.workload.try_into()?,
             unity_modal: config.unity_camera_modal.into(),
+            on_calibration: None,
         })
     }
 }
@@ -61,6 +63,7 @@ impl Default for AppState {
         Self {
             workload: WorkLoad::new(),
             unity_modal: UnityCameraModal::new(),
+            on_calibration: None,
         }
     }
 }
