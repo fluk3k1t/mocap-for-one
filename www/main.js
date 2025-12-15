@@ -5166,40 +5166,85 @@ var $elm$core$Task$perform = F2(
 			$elm$core$Task$Perform(
 				A2($elm$core$Task$map, toMessage, task)));
 	});
+var $elm$browser$Browser$element = _Browser_element;
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
 var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
-var $elm$core$Platform$Sub$batch = _Platform_batch;
-var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
-var $elm$browser$Browser$sandbox = function (impl) {
-	return _Browser_element(
+var $author$project$Main$init = function (_v0) {
+	return _Utils_Tuple2(
 		{
-			init: function (_v0) {
-				return _Utils_Tuple2(impl.init, $elm$core$Platform$Cmd$none);
-			},
-			subscriptions: function (_v1) {
-				return $elm$core$Platform$Sub$none;
-			},
-			update: F2(
-				function (msg, model) {
-					return _Utils_Tuple2(
-						A2(impl.update, msg, model),
-						$elm$core$Platform$Cmd$none);
-				}),
-			view: impl.view
-		});
+			cameras: _List_fromArray(
+				['Camera 1']),
+			message: '',
+			selectedTab: 0
+		},
+		$elm$core$Platform$Cmd$none);
 };
+var $author$project$Main$Recv = function (a) {
+	return {$: 'Recv', a: a};
+};
+var $elm$json$Json$Decode$string = _Json_decodeString;
+var $author$project$Main$messageReceiver = _Platform_incomingPort('messageReceiver', $elm$json$Json$Decode$string);
+var $author$project$Main$subscriptions = function (model) {
+	return $author$project$Main$messageReceiver($author$project$Main$Recv);
+};
+var $elm$json$Json$Encode$string = _Json_wrap;
+var $author$project$Main$sendMessage = _Platform_outgoingPort('sendMessage', $elm$json$Json$Encode$string);
 var $author$project$Main$update = F2(
 	function (msg, model) {
-		if (msg.$ === 'Increment') {
-			return model + 1;
-		} else {
-			return model - 1;
+		switch (msg.$) {
+			case 'TabClicked':
+				var index = msg.a;
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{selectedTab: index}),
+					$elm$core$Platform$Cmd$none);
+			case 'Send':
+				var sendMsg = msg.a;
+				return _Utils_Tuple2(
+					model,
+					$author$project$Main$sendMessage(sendMsg));
+			default:
+				var recvMsg = msg.a;
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{message: recvMsg}),
+					$elm$core$Platform$Cmd$none);
 		}
 	});
-var $author$project$Main$Decrement = {$: 'Decrement'};
-var $author$project$Main$Increment = {$: 'Increment'};
+var $author$project$Main$Send = function (a) {
+	return {$: 'Send', a: a};
+};
+var $author$project$Main$TabClicked = function (a) {
+	return {$: 'TabClicked', a: a};
+};
 var $elm$html$Html$button = _VirtualDom_node('button');
+var $Dacit$material_components_web_elm$Material$Tab$Internal$Config = function (a) {
+	return {$: 'Config', a: a};
+};
+var $Dacit$material_components_web_elm$Material$Tab$config = $Dacit$material_components_web_elm$Material$Tab$Internal$Config(
+	{
+		active: false,
+		additionalAttributes: _List_Nil,
+		content: {icon: $elm$core$Maybe$Nothing, label: ''},
+		onClick: $elm$core$Maybe$Nothing
+	});
+var $Dacit$material_components_web_elm$Material$TabBar$Config = function (a) {
+	return {$: 'Config', a: a};
+};
+var $Dacit$material_components_web_elm$Material$TabBar$config = $Dacit$material_components_web_elm$Material$TabBar$Config(
+	{additionalAttributes: _List_Nil, align: $elm$core$Maybe$Nothing, indicatorSpansContent: false, minWidth: false, stacked: false});
 var $elm$html$Html$div = _VirtualDom_node('div');
+var $elm$core$List$head = function (list) {
+	if (list.b) {
+		var x = list.a;
+		var xs = list.b;
+		return $elm$core$Maybe$Just(x);
+	} else {
+		return $elm$core$Maybe$Nothing;
+	}
+};
 var $elm$virtual_dom$VirtualDom$Normal = function (a) {
 	return {$: 'Normal', a: a};
 };
@@ -5217,45 +5262,552 @@ var $elm$html$Html$Events$onClick = function (msg) {
 		'click',
 		$elm$json$Json$Decode$succeed(msg));
 };
+var $Dacit$material_components_web_elm$Material$Tab$setActive = F2(
+	function (active, _v0) {
+		var config_ = _v0.a;
+		return $Dacit$material_components_web_elm$Material$Tab$Internal$Config(
+			_Utils_update(
+				config_,
+				{active: active}));
+	});
+var $Dacit$material_components_web_elm$Material$Tab$setOnClick = F2(
+	function (onClick, _v0) {
+		var config_ = _v0.a;
+		return $Dacit$material_components_web_elm$Material$Tab$Internal$Config(
+			_Utils_update(
+				config_,
+				{
+					onClick: $elm$core$Maybe$Just(onClick)
+				}));
+	});
+var $Dacit$material_components_web_elm$Material$Tab$Internal$Tab = function (a) {
+	return {$: 'Tab', a: a};
+};
+var $Dacit$material_components_web_elm$Material$Tab$tab = F2(
+	function (_v0, content) {
+		var config_ = _v0.a;
+		return $Dacit$material_components_web_elm$Material$Tab$Internal$Tab(
+			$Dacit$material_components_web_elm$Material$Tab$Internal$Config(
+				_Utils_update(
+					config_,
+					{content: content})));
+	});
+var $elm$json$Json$Decode$andThen = _Json_andThen;
+var $elm$core$Maybe$andThen = F2(
+	function (callback, maybeValue) {
+		if (maybeValue.$ === 'Just') {
+			var value = maybeValue.a;
+			return callback(value);
+		} else {
+			return $elm$core$Maybe$Nothing;
+		}
+	});
+var $elm$json$Json$Decode$field = _Json_decodeField;
+var $elm$json$Json$Decode$at = F2(
+	function (fields, decoder) {
+		return A3($elm$core$List$foldr, $elm$json$Json$Decode$field, decoder, fields);
+	});
+var $elm$core$List$drop = F2(
+	function (n, list) {
+		drop:
+		while (true) {
+			if (n <= 0) {
+				return list;
+			} else {
+				if (!list.b) {
+					return list;
+				} else {
+					var x = list.a;
+					var xs = list.b;
+					var $temp$n = n - 1,
+						$temp$list = xs;
+					n = $temp$n;
+					list = $temp$list;
+					continue drop;
+				}
+			}
+		}
+	});
+var $elm$json$Json$Decode$fail = _Json_fail;
+var $elm$json$Json$Decode$int = _Json_decodeInt;
+var $Dacit$material_components_web_elm$Material$TabBar$activatedHandler = function (tabs) {
+	return $elm$core$Maybe$Just(
+		A2(
+			$elm$html$Html$Events$on,
+			'MDCTabBar:activated',
+			A2(
+				$elm$json$Json$Decode$andThen,
+				function (activatedIndex) {
+					var _v0 = A2(
+						$elm$core$Maybe$andThen,
+						function (_v1) {
+							var onClick = _v1.a.a.onClick;
+							return onClick;
+						},
+						$elm$core$List$head(
+							A2($elm$core$List$drop, activatedIndex, tabs)));
+					if (_v0.$ === 'Just') {
+						var msg = _v0.a;
+						return $elm$json$Json$Decode$succeed(msg);
+					} else {
+						return $elm$json$Json$Decode$fail('');
+					}
+				},
+				A2(
+					$elm$json$Json$Decode$at,
+					_List_fromArray(
+						['detail', 'index']),
+					$elm$json$Json$Decode$int))));
+};
+var $elm$core$Basics$composeL = F3(
+	function (g, f, x) {
+		return g(
+			f(x));
+	});
+var $elm$core$List$filter = F2(
+	function (isGood, list) {
+		return A3(
+			$elm$core$List$foldr,
+			F2(
+				function (x, xs) {
+					return isGood(x) ? A2($elm$core$List$cons, x, xs) : xs;
+				}),
+			_List_Nil,
+			list);
+	});
+var $elm$json$Json$Encode$int = _Json_wrap;
+var $elm$core$Maybe$map = F2(
+	function (f, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return $elm$core$Maybe$Just(
+				f(value));
+		} else {
+			return $elm$core$Maybe$Nothing;
+		}
+	});
+var $elm$core$Tuple$pair = F2(
+	function (a, b) {
+		return _Utils_Tuple2(a, b);
+	});
+var $elm$virtual_dom$VirtualDom$property = F2(
+	function (key, value) {
+		return A2(
+			_VirtualDom_property,
+			_VirtualDom_noInnerHtmlOrFormAction(key),
+			_VirtualDom_noJavaScriptOrHtmlJson(value));
+	});
+var $elm$html$Html$Attributes$property = $elm$virtual_dom$VirtualDom$property;
+var $Dacit$material_components_web_elm$Material$TabBar$activeTabIndexProp = function (tabs) {
+	var activeTabIndex = A2(
+		$elm$core$Maybe$map,
+		$elm$core$Tuple$first,
+		$elm$core$List$head(
+			A2(
+				$elm$core$List$filter,
+				function (_v0) {
+					var active = _v0.b.a.a.active;
+					return active;
+				},
+				A2($elm$core$List$indexedMap, $elm$core$Tuple$pair, tabs))));
+	return A2(
+		$elm$core$Maybe$map,
+		A2(
+			$elm$core$Basics$composeL,
+			$elm$html$Html$Attributes$property('activeTabIndex'),
+			$elm$json$Json$Encode$int),
+		activeTabIndex);
+};
+var $Dacit$material_components_web_elm$Material$TabBar$anyActive = function (tabs) {
+	if (!tabs.b) {
+		return false;
+	} else {
+		var active = tabs.a.a.a.active;
+		var remainingTabs = tabs.b;
+		return active || $Dacit$material_components_web_elm$Material$TabBar$anyActive(remainingTabs);
+	}
+};
+var $elm$core$Basics$not = _Basics_not;
+var $Dacit$material_components_web_elm$Material$TabBar$setActive = F2(
+	function (active, _v0) {
+		var config_ = _v0.a.a;
+		return $Dacit$material_components_web_elm$Material$Tab$Internal$Tab(
+			$Dacit$material_components_web_elm$Material$Tab$Internal$Config(
+				_Utils_update(
+					config_,
+					{active: active})));
+	});
+var $Dacit$material_components_web_elm$Material$TabBar$enforceActiveHelper = function (tabs) {
+	if (!tabs.b) {
+		return _List_Nil;
+	} else {
+		var tab = tabs.a;
+		var active = tab.a.a.active;
+		var remainingTabs = tabs.b;
+		return (!active) ? A2(
+			$elm$core$List$cons,
+			tab,
+			$Dacit$material_components_web_elm$Material$TabBar$enforceActiveHelper(remainingTabs)) : A2(
+			$elm$core$List$cons,
+			tab,
+			A2(
+				$elm$core$List$map,
+				$Dacit$material_components_web_elm$Material$TabBar$setActive(false),
+				remainingTabs));
+	}
+};
+var $Dacit$material_components_web_elm$Material$TabBar$enforceActive = F2(
+	function (firstTab, otherTabs) {
+		var config_ = firstTab.a.a;
+		return (!$Dacit$material_components_web_elm$Material$TabBar$anyActive(
+			A2($elm$core$List$cons, firstTab, otherTabs))) ? A2(
+			$elm$core$List$cons,
+			A2($Dacit$material_components_web_elm$Material$TabBar$setActive, true, firstTab),
+			otherTabs) : $Dacit$material_components_web_elm$Material$TabBar$enforceActiveHelper(
+			A2($elm$core$List$cons, firstTab, otherTabs));
+	});
+var $elm$core$List$maybeCons = F3(
+	function (f, mx, xs) {
+		var _v0 = f(mx);
+		if (_v0.$ === 'Just') {
+			var x = _v0.a;
+			return A2($elm$core$List$cons, x, xs);
+		} else {
+			return xs;
+		}
+	});
+var $elm$core$List$filterMap = F2(
+	function (f, xs) {
+		return A3(
+			$elm$core$List$foldr,
+			$elm$core$List$maybeCons(f),
+			_List_Nil,
+			xs);
+	});
+var $elm$virtual_dom$VirtualDom$node = function (tag) {
+	return _VirtualDom_node(
+		_VirtualDom_noScript(tag));
+};
+var $elm$html$Html$node = $elm$virtual_dom$VirtualDom$node;
+var $elm$html$Html$Attributes$stringProperty = F2(
+	function (key, string) {
+		return A2(
+			_VirtualDom_property,
+			key,
+			$elm$json$Json$Encode$string(string));
+	});
+var $elm$html$Html$Attributes$class = $elm$html$Html$Attributes$stringProperty('className');
+var $Dacit$material_components_web_elm$Material$TabBar$rootCs = $elm$core$Maybe$Just(
+	$elm$html$Html$Attributes$class('mdc-tab-bar'));
+var $Dacit$material_components_web_elm$Material$TabBar$tabScrollerAlignCs = function (align) {
+	if (align.$ === 'Just') {
+		switch (align.a.$) {
+			case 'Start':
+				var _v1 = align.a;
+				return $elm$core$Maybe$Just(
+					$elm$html$Html$Attributes$class('mdc-tab-scroller--align-start'));
+			case 'End':
+				var _v2 = align.a;
+				return $elm$core$Maybe$Just(
+					$elm$html$Html$Attributes$class('mdc-tab-scroller--align-end'));
+			default:
+				var _v3 = align.a;
+				return $elm$core$Maybe$Just(
+					$elm$html$Html$Attributes$class('mdc-tab-scroller--align-center'));
+		}
+	} else {
+		return $elm$core$Maybe$Nothing;
+	}
+};
+var $Dacit$material_components_web_elm$Material$TabBar$tabScrollerCs = $elm$core$Maybe$Just(
+	$elm$html$Html$Attributes$class('mdc-tab-scroller'));
+var $elm$svg$Svg$Attributes$class = _VirtualDom_attribute('class');
+var $elm$virtual_dom$VirtualDom$map = _VirtualDom_map;
+var $elm$html$Html$map = $elm$virtual_dom$VirtualDom$map;
+var $Dacit$material_components_web_elm$Material$TabBar$tabIconElt = function (_v0) {
+	var icon = _v0.icon;
+	return A2(
+		$elm$core$Maybe$map,
+		$elm$html$Html$map($elm$core$Basics$never),
+		function () {
+			if (icon.$ === 'Just') {
+				if (icon.a.$ === 'Icon') {
+					var node = icon.a.a.node;
+					var attributes = icon.a.a.attributes;
+					var nodes = icon.a.a.nodes;
+					return $elm$core$Maybe$Just(
+						A2(
+							node,
+							A2(
+								$elm$core$List$cons,
+								$elm$html$Html$Attributes$class('mdc-tab__icon'),
+								attributes),
+							nodes));
+				} else {
+					var node = icon.a.a.node;
+					var attributes = icon.a.a.attributes;
+					var nodes = icon.a.a.nodes;
+					return $elm$core$Maybe$Just(
+						A2(
+							node,
+							A2(
+								$elm$core$List$cons,
+								$elm$svg$Svg$Attributes$class('mdc-tab__icon'),
+								attributes),
+							nodes));
+				}
+			} else {
+				return $elm$core$Maybe$Nothing;
+			}
+		}());
+};
+var $elm$html$Html$span = _VirtualDom_node('span');
+var $Dacit$material_components_web_elm$Material$TabBar$tabIndicatorContentElt = A2(
+	$elm$html$Html$span,
+	_List_fromArray(
+		[
+			$elm$html$Html$Attributes$class('mdc-tab-indicator__content'),
+			$elm$html$Html$Attributes$class('mdc-tab-indicator__content--underline')
+		]),
+	_List_Nil);
+var $Dacit$material_components_web_elm$Material$TabBar$tabIndicatorElt = function (config_) {
+	return $elm$core$Maybe$Just(
+		A2(
+			$elm$html$Html$span,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$class('mdc-tab-indicator')
+				]),
+			_List_fromArray(
+				[$Dacit$material_components_web_elm$Material$TabBar$tabIndicatorContentElt])));
+};
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
+var $Dacit$material_components_web_elm$Material$TabBar$tabTextLabelElt = function (_v0) {
+	var label = _v0.label;
+	return $elm$core$Maybe$Just(
+		A2(
+			$elm$html$Html$span,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$class('mdc-tab__text-label')
+				]),
+			_List_fromArray(
+				[
+					$elm$html$Html$text(label)
+				])));
+};
+var $Dacit$material_components_web_elm$Material$TabBar$tabContentElt = F3(
+	function (barConfig, config_, content) {
+		var indicatorSpansContent = barConfig.a.indicatorSpansContent;
+		return $elm$core$Maybe$Just(
+			A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('mdc-tab__content')
+					]),
+				indicatorSpansContent ? A2(
+					$elm$core$List$filterMap,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$Dacit$material_components_web_elm$Material$TabBar$tabIconElt(content),
+							$Dacit$material_components_web_elm$Material$TabBar$tabTextLabelElt(content),
+							$Dacit$material_components_web_elm$Material$TabBar$tabIndicatorElt(config_)
+						])) : A2(
+					$elm$core$List$filterMap,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$Dacit$material_components_web_elm$Material$TabBar$tabIconElt(content),
+							$Dacit$material_components_web_elm$Material$TabBar$tabTextLabelElt(content)
+						]))));
+	});
+var $Dacit$material_components_web_elm$Material$TabBar$tabCs = $elm$core$Maybe$Just(
+	$elm$html$Html$Attributes$class('mdc-tab'));
+var $Dacit$material_components_web_elm$Material$TabBar$tabMinWidthCs = function (_v0) {
+	var minWidth = _v0.a.minWidth;
+	return minWidth ? $elm$core$Maybe$Just(
+		$elm$html$Html$Attributes$class('mdc-tab--min-width')) : $elm$core$Maybe$Nothing;
+};
+var $Dacit$material_components_web_elm$Material$TabBar$tabRippleElt = $elm$core$Maybe$Just(
+	A2(
+		$elm$html$Html$span,
+		_List_fromArray(
+			[
+				$elm$html$Html$Attributes$class('mdc-tab__ripple')
+			]),
+		_List_Nil));
+var $elm$virtual_dom$VirtualDom$attribute = F2(
+	function (key, value) {
+		return A2(
+			_VirtualDom_attribute,
+			_VirtualDom_noOnOrFormAction(key),
+			_VirtualDom_noJavaScriptOrHtmlUri(value));
+	});
+var $elm$html$Html$Attributes$attribute = $elm$virtual_dom$VirtualDom$attribute;
+var $Dacit$material_components_web_elm$Material$TabBar$tabRoleAttr = $elm$core$Maybe$Just(
+	A2($elm$html$Html$Attributes$attribute, 'role', 'tab'));
+var $Dacit$material_components_web_elm$Material$TabBar$tabStackedCs = function (_v0) {
+	var stacked = _v0.a.stacked;
+	return stacked ? $elm$core$Maybe$Just(
+		$elm$html$Html$Attributes$class('mdc-tab--stacked')) : $elm$core$Maybe$Nothing;
+};
+var $Dacit$material_components_web_elm$Material$TabBar$viewTab = F3(
+	function (index, barConfig, tab) {
+		var indicatorSpansContent = barConfig.a.indicatorSpansContent;
+		var tabConfig = tab.a;
+		var additionalAttributes = tabConfig.a.additionalAttributes;
+		var content = tabConfig.a.content;
+		return A3(
+			$elm$html$Html$node,
+			'mdc-tab',
+			_Utils_ap(
+				A2(
+					$elm$core$List$filterMap,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$Dacit$material_components_web_elm$Material$TabBar$tabCs,
+							$Dacit$material_components_web_elm$Material$TabBar$tabRoleAttr,
+							$Dacit$material_components_web_elm$Material$TabBar$tabStackedCs(barConfig),
+							$Dacit$material_components_web_elm$Material$TabBar$tabMinWidthCs(barConfig)
+						])),
+				additionalAttributes),
+			A2(
+				$elm$core$List$filterMap,
+				$elm$core$Basics$identity,
+				indicatorSpansContent ? _List_fromArray(
+					[
+						A3($Dacit$material_components_web_elm$Material$TabBar$tabContentElt, barConfig, tabConfig, content),
+						$Dacit$material_components_web_elm$Material$TabBar$tabRippleElt
+					]) : _List_fromArray(
+					[
+						A3($Dacit$material_components_web_elm$Material$TabBar$tabContentElt, barConfig, tabConfig, content),
+						$Dacit$material_components_web_elm$Material$TabBar$tabIndicatorElt(tabConfig),
+						$Dacit$material_components_web_elm$Material$TabBar$tabRippleElt
+					])));
+	});
+var $Dacit$material_components_web_elm$Material$TabBar$tabScrollerScrollContentElt = F2(
+	function (barConfig, tabs) {
+		return A2(
+			$elm$html$Html$div,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$class('mdc-tab-scroller__scroll-content')
+				]),
+			A2(
+				$elm$core$List$indexedMap,
+				function (index) {
+					return A2($Dacit$material_components_web_elm$Material$TabBar$viewTab, index, barConfig);
+				},
+				tabs));
+	});
+var $Dacit$material_components_web_elm$Material$TabBar$tabScrollerScrollAreaElt = F2(
+	function (barConfig, tabs) {
+		return A2(
+			$elm$html$Html$div,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$class('mdc-tab-scroller__scroll-area')
+				]),
+			_List_fromArray(
+				[
+					A2($Dacit$material_components_web_elm$Material$TabBar$tabScrollerScrollContentElt, barConfig, tabs)
+				]));
+	});
+var $Dacit$material_components_web_elm$Material$TabBar$tabScroller = F3(
+	function (config_, align, tabs) {
+		return A2(
+			$elm$html$Html$div,
+			A2(
+				$elm$core$List$filterMap,
+				$elm$core$Basics$identity,
+				_List_fromArray(
+					[
+						$Dacit$material_components_web_elm$Material$TabBar$tabScrollerCs,
+						$Dacit$material_components_web_elm$Material$TabBar$tabScrollerAlignCs(align)
+					])),
+			_List_fromArray(
+				[
+					A2($Dacit$material_components_web_elm$Material$TabBar$tabScrollerScrollAreaElt, config_, tabs)
+				]));
+	});
+var $Dacit$material_components_web_elm$Material$TabBar$tablistRoleAttr = $elm$core$Maybe$Just(
+	A2($elm$html$Html$Attributes$attribute, 'role', 'tablist'));
+var $Dacit$material_components_web_elm$Material$TabBar$tabBar = F3(
+	function (config_, tab_, tabs_) {
+		var additionalAttributes = config_.a.additionalAttributes;
+		var align = config_.a.align;
+		var tabs = A2($Dacit$material_components_web_elm$Material$TabBar$enforceActive, tab_, tabs_);
+		return A3(
+			$elm$html$Html$node,
+			'mdc-tab-bar',
+			_Utils_ap(
+				A2(
+					$elm$core$List$filterMap,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$Dacit$material_components_web_elm$Material$TabBar$rootCs,
+							$Dacit$material_components_web_elm$Material$TabBar$tablistRoleAttr,
+							$Dacit$material_components_web_elm$Material$TabBar$activeTabIndexProp(tabs),
+							$Dacit$material_components_web_elm$Material$TabBar$activatedHandler(tabs)
+						])),
+				additionalAttributes),
+			_List_fromArray(
+				[
+					A3($Dacit$material_components_web_elm$Material$TabBar$tabScroller, config_, align, tabs)
+				]));
+	});
+var $elm$core$Maybe$withDefault = F2(
+	function (_default, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return value;
+		} else {
+			return _default;
+		}
+	});
 var $author$project$Main$view = function (model) {
 	return A2(
 		$elm$html$Html$div,
 		_List_Nil,
 		_List_fromArray(
 			[
+				A3(
+				$Dacit$material_components_web_elm$Material$TabBar$tabBar,
+				$Dacit$material_components_web_elm$Material$TabBar$config,
+				A2(
+					$Dacit$material_components_web_elm$Material$Tab$tab,
+					A2(
+						$Dacit$material_components_web_elm$Material$Tab$setOnClick,
+						$author$project$Main$TabClicked(0),
+						A2($Dacit$material_components_web_elm$Material$Tab$setActive, !model.selectedTab, $Dacit$material_components_web_elm$Material$Tab$config)),
+					{
+						icon: $elm$core$Maybe$Nothing,
+						label: A2(
+							$elm$core$Maybe$withDefault,
+							'',
+							$elm$core$List$head(model.cameras))
+					}),
+				_List_Nil),
 				A2(
 				$elm$html$Html$button,
 				_List_fromArray(
 					[
-						$elm$html$Html$Events$onClick($author$project$Main$Decrement)
+						$elm$html$Html$Events$onClick(
+						$author$project$Main$Send('Hello'))
 					]),
 				_List_fromArray(
 					[
-						$elm$html$Html$text('-')
+						$elm$html$Html$text('Send')
 					])),
-				A2(
-				$elm$html$Html$div,
-				_List_Nil,
-				_List_fromArray(
-					[
-						$elm$html$Html$text(
-						$elm$core$String$fromInt(model))
-					])),
-				A2(
-				$elm$html$Html$button,
-				_List_fromArray(
-					[
-						$elm$html$Html$Events$onClick($author$project$Main$Increment)
-					]),
-				_List_fromArray(
-					[
-						$elm$html$Html$text('+')
-					]))
+				$elm$html$Html$text(model.message)
 			]));
 };
-var $author$project$Main$main = $elm$browser$Browser$sandbox(
-	{init: 0, update: $author$project$Main$update, view: $author$project$Main$view});
+var $author$project$Main$main = $elm$browser$Browser$element(
+	{init: $author$project$Main$init, subscriptions: $author$project$Main$subscriptions, update: $author$project$Main$update, view: $author$project$Main$view});
 _Platform_export({'Main':{'init':$author$project$Main$main(
 	$elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}});}(this));
