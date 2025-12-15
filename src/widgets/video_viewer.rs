@@ -1,5 +1,6 @@
 use eframe::egui;
-use mocap_for_one::OpenCvCamera;
+use mocap_for_one::{OpenCvCamera, mat_to_color_image};
+use opencv::core::MatTraitConst;
 
 pub enum VideoViewerEffect {
     OnClose,
@@ -30,37 +31,45 @@ impl VideoViewer {
                 egui::Layout::top_down(egui::Align::Center),
                 |ui| {
                     ui.centered_and_justified(|ui| {
-                        if let Some(img) = opencv_cam.get_latest_frame() {
-                            let texture = ui.ctx().load_texture(
-                                format!("cam_frame_"),
-                                img.clone(),
-                                Default::default(),
-                            );
+                        let mat = opencv_cam.get_latest_frame();
 
-                            let img_size = img.size;
-                            let available =
-                                egui::Vec2::new(image_width, available_height);
-
-                            let scale_x = available.x / img_size[0] as f32;
-                            let scale_y = available.y / img_size[1] as f32;
-                            let scale = scale_x.min(scale_y).min(1.0);
-
-                            let display_size = egui::Vec2::new(
-                                img_size[0] as f32 * scale,
-                                img_size[1] as f32 * scale,
-                            );
-
-                            ui.image(egui::ImageSource::Texture(
-                                egui::load::SizedTexture::new(
-                                    texture.id(),
-                                    display_size,
-                                ),
-                            ));
-                        } else {
-                            ui.centered_and_justified(|ui| {
-                                ui.label("No frame available yet");
-                            });
+                        if mat.empty() {
+                            ui.label("No frame available yet");
+                            return;
                         }
+                        let img = mat_to_color_image(mat)
+                            .expect("Failed to convert mat to color image");
+
+                        let texture = ui.ctx().load_texture(
+                            format!("cam_frame_"),
+                            img.clone(),
+                            Default::default(),
+                        );
+
+                        let img_size = img.size;
+                        let available =
+                            egui::Vec2::new(image_width, available_height);
+
+                        let scale_x = available.x / img_size[0] as f32;
+                        let scale_y = available.y / img_size[1] as f32;
+                        let scale = scale_x.min(scale_y).min(1.0);
+
+                        let display_size = egui::Vec2::new(
+                            img_size[0] as f32 * scale,
+                            img_size[1] as f32 * scale,
+                        );
+
+                        ui.image(egui::ImageSource::Texture(
+                            egui::load::SizedTexture::new(
+                                texture.id(),
+                                display_size,
+                            ),
+                        ));
+                        // } else {
+                        //     ui.centered_and_justified(|ui| {
+                        //         ui.label("No frame available yet");
+                        //     });
+                        // }
                     });
                 },
             );
