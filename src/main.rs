@@ -18,11 +18,18 @@ fn main() {
         <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500|Material+Icons" rel="stylesheet">
         <link rel="stylesheet" href="https://unpkg.com/material-components-web-elm@9.1.0/dist/material-components-web-elm.min.css">
         <script src="https://unpkg.com/material-components-web-elm@9.1.0/dist/material-components-web-elm.min.js"></script>
-        <script>{js}</script>
+        <script src="https://unpkg.com/elm-taskport@2.0.1/dist/taskport.min.js"></script>
+        <script>
+        {js}
+        </script>
         </head>
         <body>
         <div id="app"></div>
         <script>
+        TaskPort.install();
+        TaskPort.register("functionName", (args) => {{
+            return "test api";
+        }});
         var app = Elm.Main.init({{ node: document.getElementById('app') }});
         app.ports.sendMessage.subscribe(function(message) {{
             app.ports.messageReceiver.send(message);

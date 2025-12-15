@@ -4378,6 +4378,218 @@ function _Browser_load(url)
 		}
 	}));
 }
+
+
+
+// SEND REQUEST
+
+var _Http_toTask = F3(function(router, toTask, request)
+{
+	return _Scheduler_binding(function(callback)
+	{
+		function done(response) {
+			callback(toTask(request.expect.a(response)));
+		}
+
+		var xhr = new XMLHttpRequest();
+		xhr.addEventListener('error', function() { done($elm$http$Http$NetworkError_); });
+		xhr.addEventListener('timeout', function() { done($elm$http$Http$Timeout_); });
+		xhr.addEventListener('load', function() { done(_Http_toResponse(request.expect.b, xhr)); });
+		$elm$core$Maybe$isJust(request.tracker) && _Http_track(router, xhr, request.tracker.a);
+
+		try {
+			xhr.open(request.method, request.url, true);
+		} catch (e) {
+			return done($elm$http$Http$BadUrl_(request.url));
+		}
+
+		_Http_configureRequest(xhr, request);
+
+		request.body.a && xhr.setRequestHeader('Content-Type', request.body.a);
+		xhr.send(request.body.b);
+
+		return function() { xhr.c = true; xhr.abort(); };
+	});
+});
+
+
+// CONFIGURE
+
+function _Http_configureRequest(xhr, request)
+{
+	for (var headers = request.headers; headers.b; headers = headers.b) // WHILE_CONS
+	{
+		xhr.setRequestHeader(headers.a.a, headers.a.b);
+	}
+	xhr.timeout = request.timeout.a || 0;
+	xhr.responseType = request.expect.d;
+	xhr.withCredentials = request.allowCookiesFromOtherDomains;
+}
+
+
+// RESPONSES
+
+function _Http_toResponse(toBody, xhr)
+{
+	return A2(
+		200 <= xhr.status && xhr.status < 300 ? $elm$http$Http$GoodStatus_ : $elm$http$Http$BadStatus_,
+		_Http_toMetadata(xhr),
+		toBody(xhr.response)
+	);
+}
+
+
+// METADATA
+
+function _Http_toMetadata(xhr)
+{
+	return {
+		url: xhr.responseURL,
+		statusCode: xhr.status,
+		statusText: xhr.statusText,
+		headers: _Http_parseHeaders(xhr.getAllResponseHeaders())
+	};
+}
+
+
+// HEADERS
+
+function _Http_parseHeaders(rawHeaders)
+{
+	if (!rawHeaders)
+	{
+		return $elm$core$Dict$empty;
+	}
+
+	var headers = $elm$core$Dict$empty;
+	var headerPairs = rawHeaders.split('\r\n');
+	for (var i = headerPairs.length; i--; )
+	{
+		var headerPair = headerPairs[i];
+		var index = headerPair.indexOf(': ');
+		if (index > 0)
+		{
+			var key = headerPair.substring(0, index);
+			var value = headerPair.substring(index + 2);
+
+			headers = A3($elm$core$Dict$update, key, function(oldValue) {
+				return $elm$core$Maybe$Just($elm$core$Maybe$isJust(oldValue)
+					? value + ', ' + oldValue.a
+					: value
+				);
+			}, headers);
+		}
+	}
+	return headers;
+}
+
+
+// EXPECT
+
+var _Http_expect = F3(function(type, toBody, toValue)
+{
+	return {
+		$: 0,
+		d: type,
+		b: toBody,
+		a: toValue
+	};
+});
+
+var _Http_mapExpect = F2(function(func, expect)
+{
+	return {
+		$: 0,
+		d: expect.d,
+		b: expect.b,
+		a: function(x) { return func(expect.a(x)); }
+	};
+});
+
+function _Http_toDataView(arrayBuffer)
+{
+	return new DataView(arrayBuffer);
+}
+
+
+// BODY and PARTS
+
+var _Http_emptyBody = { $: 0 };
+var _Http_pair = F2(function(a, b) { return { $: 0, a: a, b: b }; });
+
+function _Http_toFormData(parts)
+{
+	for (var formData = new FormData(); parts.b; parts = parts.b) // WHILE_CONS
+	{
+		var part = parts.a;
+		formData.append(part.a, part.b);
+	}
+	return formData;
+}
+
+var _Http_bytesToBlob = F2(function(mime, bytes)
+{
+	return new Blob([bytes], { type: mime });
+});
+
+
+// PROGRESS
+
+function _Http_track(router, xhr, tracker)
+{
+	// TODO check out lengthComputable on loadstart event
+
+	xhr.upload.addEventListener('progress', function(event) {
+		if (xhr.c) { return; }
+		_Scheduler_rawSpawn(A2($elm$core$Platform$sendToSelf, router, _Utils_Tuple2(tracker, $elm$http$Http$Sending({
+			sent: event.loaded,
+			size: event.total
+		}))));
+	});
+	xhr.addEventListener('progress', function(event) {
+		if (xhr.c) { return; }
+		_Scheduler_rawSpawn(A2($elm$core$Platform$sendToSelf, router, _Utils_Tuple2(tracker, $elm$http$Http$Receiving({
+			received: event.loaded,
+			size: event.lengthComputable ? $elm$core$Maybe$Just(event.total) : $elm$core$Maybe$Nothing
+		}))));
+	});
+}
+
+
+var _Bitwise_and = F2(function(a, b)
+{
+	return a & b;
+});
+
+var _Bitwise_or = F2(function(a, b)
+{
+	return a | b;
+});
+
+var _Bitwise_xor = F2(function(a, b)
+{
+	return a ^ b;
+});
+
+function _Bitwise_complement(a)
+{
+	return ~a;
+};
+
+var _Bitwise_shiftLeftBy = F2(function(offset, a)
+{
+	return a << offset;
+});
+
+var _Bitwise_shiftRightBy = F2(function(offset, a)
+{
+	return a >> offset;
+});
+
+var _Bitwise_shiftRightZfBy = F2(function(offset, a)
+{
+	return a >>> offset;
+});
 var $elm$core$Basics$EQ = {$: 'EQ'};
 var $elm$core$Basics$GT = {$: 'GT'};
 var $elm$core$Basics$LT = {$: 'LT'};
@@ -5167,83 +5379,1241 @@ var $elm$core$Task$perform = F2(
 				A2($elm$core$Task$map, toMessage, task)));
 	});
 var $elm$browser$Browser$element = _Browser_element;
-var $elm$core$Platform$Cmd$batch = _Platform_batch;
-var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
+var $author$project$Main$TestFunction = function (a) {
+	return {$: 'TestFunction', a: a};
+};
+var $elm$core$Basics$composeL = F3(
+	function (g, f, x) {
+		return g(
+			f(x));
+	});
+var $elm$core$Task$onError = _Scheduler_onError;
+var $elm$core$Task$attempt = F2(
+	function (resultToMessage, task) {
+		return $elm$core$Task$command(
+			$elm$core$Task$Perform(
+				A2(
+					$elm$core$Task$onError,
+					A2(
+						$elm$core$Basics$composeL,
+						A2($elm$core$Basics$composeL, $elm$core$Task$succeed, resultToMessage),
+						$elm$core$Result$Err),
+					A2(
+						$elm$core$Task$andThen,
+						A2(
+							$elm$core$Basics$composeL,
+							A2($elm$core$Basics$composeL, $elm$core$Task$succeed, resultToMessage),
+							$elm$core$Result$Ok),
+						task))));
+	});
+var $lobanov$elm_taskport$TaskPort$DefaultNS = function (a) {
+	return {$: 'DefaultNS', a: a};
+};
+var $lobanov$elm_taskport$TaskPort$moduleVersion = '2.0.1';
+var $lobanov$elm_taskport$TaskPort$buildCallUrl = function (_function) {
+	if (_function.$ === 'DefaultNS') {
+		var name = _function.a;
+		return 'elmtaskport:///' + (name + ('?v=' + $lobanov$elm_taskport$TaskPort$moduleVersion));
+	} else {
+		var ns = _function.a;
+		var nsVersion = _function.b;
+		var name = _function.c;
+		return 'elmtaskport://' + (ns + ('/' + (name + ('?v=' + ($lobanov$elm_taskport$TaskPort$moduleVersion + ('&nsv=' + nsVersion))))));
+	}
+};
+var $elm$http$Http$BadStatus_ = F2(
+	function (a, b) {
+		return {$: 'BadStatus_', a: a, b: b};
+	});
+var $elm$http$Http$BadUrl_ = function (a) {
+	return {$: 'BadUrl_', a: a};
+};
+var $elm$http$Http$GoodStatus_ = F2(
+	function (a, b) {
+		return {$: 'GoodStatus_', a: a, b: b};
+	});
+var $elm$http$Http$NetworkError_ = {$: 'NetworkError_'};
+var $elm$http$Http$Receiving = function (a) {
+	return {$: 'Receiving', a: a};
+};
+var $elm$http$Http$Sending = function (a) {
+	return {$: 'Sending', a: a};
+};
+var $elm$http$Http$Timeout_ = {$: 'Timeout_'};
+var $elm$core$Dict$RBEmpty_elm_builtin = {$: 'RBEmpty_elm_builtin'};
+var $elm$core$Dict$empty = $elm$core$Dict$RBEmpty_elm_builtin;
+var $elm$core$Maybe$isJust = function (maybe) {
+	if (maybe.$ === 'Just') {
+		return true;
+	} else {
+		return false;
+	}
+};
+var $elm$core$Platform$sendToSelf = _Platform_sendToSelf;
+var $elm$core$Basics$compare = _Utils_compare;
+var $elm$core$Dict$get = F2(
+	function (targetKey, dict) {
+		get:
+		while (true) {
+			if (dict.$ === 'RBEmpty_elm_builtin') {
+				return $elm$core$Maybe$Nothing;
+			} else {
+				var key = dict.b;
+				var value = dict.c;
+				var left = dict.d;
+				var right = dict.e;
+				var _v1 = A2($elm$core$Basics$compare, targetKey, key);
+				switch (_v1.$) {
+					case 'LT':
+						var $temp$targetKey = targetKey,
+							$temp$dict = left;
+						targetKey = $temp$targetKey;
+						dict = $temp$dict;
+						continue get;
+					case 'EQ':
+						return $elm$core$Maybe$Just(value);
+					default:
+						var $temp$targetKey = targetKey,
+							$temp$dict = right;
+						targetKey = $temp$targetKey;
+						dict = $temp$dict;
+						continue get;
+				}
+			}
+		}
+	});
+var $elm$core$Dict$Black = {$: 'Black'};
+var $elm$core$Dict$RBNode_elm_builtin = F5(
+	function (a, b, c, d, e) {
+		return {$: 'RBNode_elm_builtin', a: a, b: b, c: c, d: d, e: e};
+	});
+var $elm$core$Dict$Red = {$: 'Red'};
+var $elm$core$Dict$balance = F5(
+	function (color, key, value, left, right) {
+		if ((right.$ === 'RBNode_elm_builtin') && (right.a.$ === 'Red')) {
+			var _v1 = right.a;
+			var rK = right.b;
+			var rV = right.c;
+			var rLeft = right.d;
+			var rRight = right.e;
+			if ((left.$ === 'RBNode_elm_builtin') && (left.a.$ === 'Red')) {
+				var _v3 = left.a;
+				var lK = left.b;
+				var lV = left.c;
+				var lLeft = left.d;
+				var lRight = left.e;
+				return A5(
+					$elm$core$Dict$RBNode_elm_builtin,
+					$elm$core$Dict$Red,
+					key,
+					value,
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, lK, lV, lLeft, lRight),
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, rK, rV, rLeft, rRight));
+			} else {
+				return A5(
+					$elm$core$Dict$RBNode_elm_builtin,
+					color,
+					rK,
+					rV,
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Red, key, value, left, rLeft),
+					rRight);
+			}
+		} else {
+			if ((((left.$ === 'RBNode_elm_builtin') && (left.a.$ === 'Red')) && (left.d.$ === 'RBNode_elm_builtin')) && (left.d.a.$ === 'Red')) {
+				var _v5 = left.a;
+				var lK = left.b;
+				var lV = left.c;
+				var _v6 = left.d;
+				var _v7 = _v6.a;
+				var llK = _v6.b;
+				var llV = _v6.c;
+				var llLeft = _v6.d;
+				var llRight = _v6.e;
+				var lRight = left.e;
+				return A5(
+					$elm$core$Dict$RBNode_elm_builtin,
+					$elm$core$Dict$Red,
+					lK,
+					lV,
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, llK, llV, llLeft, llRight),
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, key, value, lRight, right));
+			} else {
+				return A5($elm$core$Dict$RBNode_elm_builtin, color, key, value, left, right);
+			}
+		}
+	});
+var $elm$core$Dict$insertHelp = F3(
+	function (key, value, dict) {
+		if (dict.$ === 'RBEmpty_elm_builtin') {
+			return A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Red, key, value, $elm$core$Dict$RBEmpty_elm_builtin, $elm$core$Dict$RBEmpty_elm_builtin);
+		} else {
+			var nColor = dict.a;
+			var nKey = dict.b;
+			var nValue = dict.c;
+			var nLeft = dict.d;
+			var nRight = dict.e;
+			var _v1 = A2($elm$core$Basics$compare, key, nKey);
+			switch (_v1.$) {
+				case 'LT':
+					return A5(
+						$elm$core$Dict$balance,
+						nColor,
+						nKey,
+						nValue,
+						A3($elm$core$Dict$insertHelp, key, value, nLeft),
+						nRight);
+				case 'EQ':
+					return A5($elm$core$Dict$RBNode_elm_builtin, nColor, nKey, value, nLeft, nRight);
+				default:
+					return A5(
+						$elm$core$Dict$balance,
+						nColor,
+						nKey,
+						nValue,
+						nLeft,
+						A3($elm$core$Dict$insertHelp, key, value, nRight));
+			}
+		}
+	});
+var $elm$core$Dict$insert = F3(
+	function (key, value, dict) {
+		var _v0 = A3($elm$core$Dict$insertHelp, key, value, dict);
+		if ((_v0.$ === 'RBNode_elm_builtin') && (_v0.a.$ === 'Red')) {
+			var _v1 = _v0.a;
+			var k = _v0.b;
+			var v = _v0.c;
+			var l = _v0.d;
+			var r = _v0.e;
+			return A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, k, v, l, r);
+		} else {
+			var x = _v0;
+			return x;
+		}
+	});
+var $elm$core$Dict$getMin = function (dict) {
+	getMin:
+	while (true) {
+		if ((dict.$ === 'RBNode_elm_builtin') && (dict.d.$ === 'RBNode_elm_builtin')) {
+			var left = dict.d;
+			var $temp$dict = left;
+			dict = $temp$dict;
+			continue getMin;
+		} else {
+			return dict;
+		}
+	}
+};
+var $elm$core$Dict$moveRedLeft = function (dict) {
+	if (((dict.$ === 'RBNode_elm_builtin') && (dict.d.$ === 'RBNode_elm_builtin')) && (dict.e.$ === 'RBNode_elm_builtin')) {
+		if ((dict.e.d.$ === 'RBNode_elm_builtin') && (dict.e.d.a.$ === 'Red')) {
+			var clr = dict.a;
+			var k = dict.b;
+			var v = dict.c;
+			var _v1 = dict.d;
+			var lClr = _v1.a;
+			var lK = _v1.b;
+			var lV = _v1.c;
+			var lLeft = _v1.d;
+			var lRight = _v1.e;
+			var _v2 = dict.e;
+			var rClr = _v2.a;
+			var rK = _v2.b;
+			var rV = _v2.c;
+			var rLeft = _v2.d;
+			var _v3 = rLeft.a;
+			var rlK = rLeft.b;
+			var rlV = rLeft.c;
+			var rlL = rLeft.d;
+			var rlR = rLeft.e;
+			var rRight = _v2.e;
+			return A5(
+				$elm$core$Dict$RBNode_elm_builtin,
+				$elm$core$Dict$Red,
+				rlK,
+				rlV,
+				A5(
+					$elm$core$Dict$RBNode_elm_builtin,
+					$elm$core$Dict$Black,
+					k,
+					v,
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Red, lK, lV, lLeft, lRight),
+					rlL),
+				A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, rK, rV, rlR, rRight));
+		} else {
+			var clr = dict.a;
+			var k = dict.b;
+			var v = dict.c;
+			var _v4 = dict.d;
+			var lClr = _v4.a;
+			var lK = _v4.b;
+			var lV = _v4.c;
+			var lLeft = _v4.d;
+			var lRight = _v4.e;
+			var _v5 = dict.e;
+			var rClr = _v5.a;
+			var rK = _v5.b;
+			var rV = _v5.c;
+			var rLeft = _v5.d;
+			var rRight = _v5.e;
+			if (clr.$ === 'Black') {
+				return A5(
+					$elm$core$Dict$RBNode_elm_builtin,
+					$elm$core$Dict$Black,
+					k,
+					v,
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Red, lK, lV, lLeft, lRight),
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Red, rK, rV, rLeft, rRight));
+			} else {
+				return A5(
+					$elm$core$Dict$RBNode_elm_builtin,
+					$elm$core$Dict$Black,
+					k,
+					v,
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Red, lK, lV, lLeft, lRight),
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Red, rK, rV, rLeft, rRight));
+			}
+		}
+	} else {
+		return dict;
+	}
+};
+var $elm$core$Dict$moveRedRight = function (dict) {
+	if (((dict.$ === 'RBNode_elm_builtin') && (dict.d.$ === 'RBNode_elm_builtin')) && (dict.e.$ === 'RBNode_elm_builtin')) {
+		if ((dict.d.d.$ === 'RBNode_elm_builtin') && (dict.d.d.a.$ === 'Red')) {
+			var clr = dict.a;
+			var k = dict.b;
+			var v = dict.c;
+			var _v1 = dict.d;
+			var lClr = _v1.a;
+			var lK = _v1.b;
+			var lV = _v1.c;
+			var _v2 = _v1.d;
+			var _v3 = _v2.a;
+			var llK = _v2.b;
+			var llV = _v2.c;
+			var llLeft = _v2.d;
+			var llRight = _v2.e;
+			var lRight = _v1.e;
+			var _v4 = dict.e;
+			var rClr = _v4.a;
+			var rK = _v4.b;
+			var rV = _v4.c;
+			var rLeft = _v4.d;
+			var rRight = _v4.e;
+			return A5(
+				$elm$core$Dict$RBNode_elm_builtin,
+				$elm$core$Dict$Red,
+				lK,
+				lV,
+				A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, llK, llV, llLeft, llRight),
+				A5(
+					$elm$core$Dict$RBNode_elm_builtin,
+					$elm$core$Dict$Black,
+					k,
+					v,
+					lRight,
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Red, rK, rV, rLeft, rRight)));
+		} else {
+			var clr = dict.a;
+			var k = dict.b;
+			var v = dict.c;
+			var _v5 = dict.d;
+			var lClr = _v5.a;
+			var lK = _v5.b;
+			var lV = _v5.c;
+			var lLeft = _v5.d;
+			var lRight = _v5.e;
+			var _v6 = dict.e;
+			var rClr = _v6.a;
+			var rK = _v6.b;
+			var rV = _v6.c;
+			var rLeft = _v6.d;
+			var rRight = _v6.e;
+			if (clr.$ === 'Black') {
+				return A5(
+					$elm$core$Dict$RBNode_elm_builtin,
+					$elm$core$Dict$Black,
+					k,
+					v,
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Red, lK, lV, lLeft, lRight),
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Red, rK, rV, rLeft, rRight));
+			} else {
+				return A5(
+					$elm$core$Dict$RBNode_elm_builtin,
+					$elm$core$Dict$Black,
+					k,
+					v,
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Red, lK, lV, lLeft, lRight),
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Red, rK, rV, rLeft, rRight));
+			}
+		}
+	} else {
+		return dict;
+	}
+};
+var $elm$core$Dict$removeHelpPrepEQGT = F7(
+	function (targetKey, dict, color, key, value, left, right) {
+		if ((left.$ === 'RBNode_elm_builtin') && (left.a.$ === 'Red')) {
+			var _v1 = left.a;
+			var lK = left.b;
+			var lV = left.c;
+			var lLeft = left.d;
+			var lRight = left.e;
+			return A5(
+				$elm$core$Dict$RBNode_elm_builtin,
+				color,
+				lK,
+				lV,
+				lLeft,
+				A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Red, key, value, lRight, right));
+		} else {
+			_v2$2:
+			while (true) {
+				if ((right.$ === 'RBNode_elm_builtin') && (right.a.$ === 'Black')) {
+					if (right.d.$ === 'RBNode_elm_builtin') {
+						if (right.d.a.$ === 'Black') {
+							var _v3 = right.a;
+							var _v4 = right.d;
+							var _v5 = _v4.a;
+							return $elm$core$Dict$moveRedRight(dict);
+						} else {
+							break _v2$2;
+						}
+					} else {
+						var _v6 = right.a;
+						var _v7 = right.d;
+						return $elm$core$Dict$moveRedRight(dict);
+					}
+				} else {
+					break _v2$2;
+				}
+			}
+			return dict;
+		}
+	});
+var $elm$core$Dict$removeMin = function (dict) {
+	if ((dict.$ === 'RBNode_elm_builtin') && (dict.d.$ === 'RBNode_elm_builtin')) {
+		var color = dict.a;
+		var key = dict.b;
+		var value = dict.c;
+		var left = dict.d;
+		var lColor = left.a;
+		var lLeft = left.d;
+		var right = dict.e;
+		if (lColor.$ === 'Black') {
+			if ((lLeft.$ === 'RBNode_elm_builtin') && (lLeft.a.$ === 'Red')) {
+				var _v3 = lLeft.a;
+				return A5(
+					$elm$core$Dict$RBNode_elm_builtin,
+					color,
+					key,
+					value,
+					$elm$core$Dict$removeMin(left),
+					right);
+			} else {
+				var _v4 = $elm$core$Dict$moveRedLeft(dict);
+				if (_v4.$ === 'RBNode_elm_builtin') {
+					var nColor = _v4.a;
+					var nKey = _v4.b;
+					var nValue = _v4.c;
+					var nLeft = _v4.d;
+					var nRight = _v4.e;
+					return A5(
+						$elm$core$Dict$balance,
+						nColor,
+						nKey,
+						nValue,
+						$elm$core$Dict$removeMin(nLeft),
+						nRight);
+				} else {
+					return $elm$core$Dict$RBEmpty_elm_builtin;
+				}
+			}
+		} else {
+			return A5(
+				$elm$core$Dict$RBNode_elm_builtin,
+				color,
+				key,
+				value,
+				$elm$core$Dict$removeMin(left),
+				right);
+		}
+	} else {
+		return $elm$core$Dict$RBEmpty_elm_builtin;
+	}
+};
+var $elm$core$Dict$removeHelp = F2(
+	function (targetKey, dict) {
+		if (dict.$ === 'RBEmpty_elm_builtin') {
+			return $elm$core$Dict$RBEmpty_elm_builtin;
+		} else {
+			var color = dict.a;
+			var key = dict.b;
+			var value = dict.c;
+			var left = dict.d;
+			var right = dict.e;
+			if (_Utils_cmp(targetKey, key) < 0) {
+				if ((left.$ === 'RBNode_elm_builtin') && (left.a.$ === 'Black')) {
+					var _v4 = left.a;
+					var lLeft = left.d;
+					if ((lLeft.$ === 'RBNode_elm_builtin') && (lLeft.a.$ === 'Red')) {
+						var _v6 = lLeft.a;
+						return A5(
+							$elm$core$Dict$RBNode_elm_builtin,
+							color,
+							key,
+							value,
+							A2($elm$core$Dict$removeHelp, targetKey, left),
+							right);
+					} else {
+						var _v7 = $elm$core$Dict$moveRedLeft(dict);
+						if (_v7.$ === 'RBNode_elm_builtin') {
+							var nColor = _v7.a;
+							var nKey = _v7.b;
+							var nValue = _v7.c;
+							var nLeft = _v7.d;
+							var nRight = _v7.e;
+							return A5(
+								$elm$core$Dict$balance,
+								nColor,
+								nKey,
+								nValue,
+								A2($elm$core$Dict$removeHelp, targetKey, nLeft),
+								nRight);
+						} else {
+							return $elm$core$Dict$RBEmpty_elm_builtin;
+						}
+					}
+				} else {
+					return A5(
+						$elm$core$Dict$RBNode_elm_builtin,
+						color,
+						key,
+						value,
+						A2($elm$core$Dict$removeHelp, targetKey, left),
+						right);
+				}
+			} else {
+				return A2(
+					$elm$core$Dict$removeHelpEQGT,
+					targetKey,
+					A7($elm$core$Dict$removeHelpPrepEQGT, targetKey, dict, color, key, value, left, right));
+			}
+		}
+	});
+var $elm$core$Dict$removeHelpEQGT = F2(
+	function (targetKey, dict) {
+		if (dict.$ === 'RBNode_elm_builtin') {
+			var color = dict.a;
+			var key = dict.b;
+			var value = dict.c;
+			var left = dict.d;
+			var right = dict.e;
+			if (_Utils_eq(targetKey, key)) {
+				var _v1 = $elm$core$Dict$getMin(right);
+				if (_v1.$ === 'RBNode_elm_builtin') {
+					var minKey = _v1.b;
+					var minValue = _v1.c;
+					return A5(
+						$elm$core$Dict$balance,
+						color,
+						minKey,
+						minValue,
+						left,
+						$elm$core$Dict$removeMin(right));
+				} else {
+					return $elm$core$Dict$RBEmpty_elm_builtin;
+				}
+			} else {
+				return A5(
+					$elm$core$Dict$balance,
+					color,
+					key,
+					value,
+					left,
+					A2($elm$core$Dict$removeHelp, targetKey, right));
+			}
+		} else {
+			return $elm$core$Dict$RBEmpty_elm_builtin;
+		}
+	});
+var $elm$core$Dict$remove = F2(
+	function (key, dict) {
+		var _v0 = A2($elm$core$Dict$removeHelp, key, dict);
+		if ((_v0.$ === 'RBNode_elm_builtin') && (_v0.a.$ === 'Red')) {
+			var _v1 = _v0.a;
+			var k = _v0.b;
+			var v = _v0.c;
+			var l = _v0.d;
+			var r = _v0.e;
+			return A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, k, v, l, r);
+		} else {
+			var x = _v0;
+			return x;
+		}
+	});
+var $elm$core$Dict$update = F3(
+	function (targetKey, alter, dictionary) {
+		var _v0 = alter(
+			A2($elm$core$Dict$get, targetKey, dictionary));
+		if (_v0.$ === 'Just') {
+			var value = _v0.a;
+			return A3($elm$core$Dict$insert, targetKey, value, dictionary);
+		} else {
+			return A2($elm$core$Dict$remove, targetKey, dictionary);
+		}
+	});
+var $elm$http$Http$jsonBody = function (value) {
+	return A2(
+		_Http_pair,
+		'application/json',
+		A2($elm$json$Json$Encode$encode, 0, value));
+};
+var $lobanov$elm_taskport$TaskPort$CannotDecodeValue = F2(
+	function (a, b) {
+		return {$: 'CannotDecodeValue', a: a, b: b};
+	});
+var $lobanov$elm_taskport$TaskPort$InteropError = function (a) {
+	return {$: 'InteropError', a: a};
+};
+var $lobanov$elm_taskport$TaskPort$JSError = function (a) {
+	return {$: 'JSError', a: a};
+};
+var $lobanov$elm_taskport$TaskPort$NotCompatible = function (a) {
+	return {$: 'NotCompatible', a: a};
+};
+var $lobanov$elm_taskport$TaskPort$NotFound = function (a) {
+	return {$: 'NotFound', a: a};
+};
+var $lobanov$elm_taskport$TaskPort$NotInstalled = {$: 'NotInstalled'};
+var $lobanov$elm_taskport$TaskPort$RuntimeError = function (a) {
+	return {$: 'RuntimeError', a: a};
+};
+var $elm$json$Json$Decode$decodeString = _Json_runOnString;
+var $lobanov$elm_taskport$TaskPort$ErrorObject = F2(
+	function (a, b) {
+		return {$: 'ErrorObject', a: a, b: b};
+	});
+var $lobanov$elm_taskport$TaskPort$ErrorValue = function (a) {
+	return {$: 'ErrorValue', a: a};
+};
+var $lobanov$elm_taskport$TaskPort$JSErrorRecord = F4(
+	function (name, message, stackLines, cause) {
+		return {cause: cause, message: message, name: name, stackLines: stackLines};
+	});
+var $elm$json$Json$Decode$field = _Json_decodeField;
+var $elm$json$Json$Decode$andThen = _Json_andThen;
+var $elm$json$Json$Decode$lazy = function (thunk) {
+	return A2(
+		$elm$json$Json$Decode$andThen,
+		thunk,
+		$elm$json$Json$Decode$succeed(_Utils_Tuple0));
+};
+var $elm$json$Json$Decode$list = _Json_decodeList;
+var $elm$json$Json$Decode$map4 = _Json_map4;
+var $elm$json$Json$Decode$null = _Json_decodeNull;
+var $elm$json$Json$Decode$oneOf = _Json_oneOf;
+var $elm$json$Json$Decode$string = _Json_decodeString;
+var $elm$json$Json$Decode$value = _Json_decodeValue;
+function $lobanov$elm_taskport$TaskPort$cyclic$jsErrorDecoder() {
+	return $elm$json$Json$Decode$oneOf(
+		_List_fromArray(
+			[
+				A3(
+				$elm$json$Json$Decode$map2,
+				$lobanov$elm_taskport$TaskPort$ErrorObject,
+				A2($elm$json$Json$Decode$field, 'name', $elm$json$Json$Decode$string),
+				$lobanov$elm_taskport$TaskPort$cyclic$jsErrorRecordDecoder()),
+				A2($elm$json$Json$Decode$map, $lobanov$elm_taskport$TaskPort$ErrorValue, $elm$json$Json$Decode$value)
+			]));
+}
+function $lobanov$elm_taskport$TaskPort$cyclic$jsErrorRecordDecoder() {
+	return A5(
+		$elm$json$Json$Decode$map4,
+		$lobanov$elm_taskport$TaskPort$JSErrorRecord,
+		A2($elm$json$Json$Decode$field, 'name', $elm$json$Json$Decode$string),
+		A2($elm$json$Json$Decode$field, 'message', $elm$json$Json$Decode$string),
+		A2(
+			$elm$json$Json$Decode$field,
+			'stackLines',
+			$elm$json$Json$Decode$list($elm$json$Json$Decode$string)),
+		A2(
+			$elm$json$Json$Decode$field,
+			'cause',
+			$elm$json$Json$Decode$oneOf(
+				_List_fromArray(
+					[
+						$elm$json$Json$Decode$null($elm$core$Maybe$Nothing),
+						A2(
+						$elm$json$Json$Decode$map,
+						$elm$core$Maybe$Just,
+						$elm$json$Json$Decode$lazy(
+							function (_v0) {
+								return $lobanov$elm_taskport$TaskPort$cyclic$jsErrorDecoder();
+							}))
+					]))));
+}
+try {
+	var $lobanov$elm_taskport$TaskPort$jsErrorDecoder = $lobanov$elm_taskport$TaskPort$cyclic$jsErrorDecoder();
+	$lobanov$elm_taskport$TaskPort$cyclic$jsErrorDecoder = function () {
+		return $lobanov$elm_taskport$TaskPort$jsErrorDecoder;
+	};
+	var $lobanov$elm_taskport$TaskPort$jsErrorRecordDecoder = $lobanov$elm_taskport$TaskPort$cyclic$jsErrorRecordDecoder();
+	$lobanov$elm_taskport$TaskPort$cyclic$jsErrorRecordDecoder = function () {
+		return $lobanov$elm_taskport$TaskPort$jsErrorRecordDecoder;
+	};
+} catch ($) {
+	throw 'Some top-level definitions from `TaskPort` are causing infinite recursion:\n\n  ┌─────┐\n  │    jsErrorDecoder\n  │     ↓\n  │    jsErrorRecordDecoder\n  └─────┘\n\nThese errors are very tricky, so read https://elm-lang.org/0.19.1/bad-recursion to learn how to fix it!';}
+var $lobanov$elm_taskport$TaskPort$runtimeError = function (msg) {
+	return $elm$core$Result$Err(
+		$lobanov$elm_taskport$TaskPort$InteropError(
+			$lobanov$elm_taskport$TaskPort$RuntimeError('Runtime error in JavaScript interop: ' + (msg + '. JavaScript console may contain more information about the issue.'))));
+};
+var $lobanov$elm_taskport$TaskPort$resolveResponse = F2(
+	function (valueDecoder, res) {
+		switch (res.$) {
+			case 'BadUrl_':
+				var url = res.a;
+				return $lobanov$elm_taskport$TaskPort$runtimeError('bad url ' + url);
+			case 'Timeout_':
+				return $lobanov$elm_taskport$TaskPort$runtimeError('timeout');
+			case 'NetworkError_':
+				return $elm$core$Result$Err(
+					$lobanov$elm_taskport$TaskPort$InteropError($lobanov$elm_taskport$TaskPort$NotInstalled));
+			case 'BadStatus_':
+				var statusCode = res.a.statusCode;
+				var body = res.b;
+				if (statusCode === 400) {
+					return $elm$core$Result$Err(
+						$lobanov$elm_taskport$TaskPort$InteropError(
+							$lobanov$elm_taskport$TaskPort$NotCompatible(body)));
+				} else {
+					if (statusCode === 404) {
+						return $elm$core$Result$Err(
+							$lobanov$elm_taskport$TaskPort$InteropError(
+								$lobanov$elm_taskport$TaskPort$NotFound(body)));
+					} else {
+						if (statusCode === 500) {
+							var _v1 = A2($elm$json$Json$Decode$decodeString, $lobanov$elm_taskport$TaskPort$jsErrorDecoder, body);
+							if (_v1.$ === 'Ok') {
+								var errorValue = _v1.a;
+								return $elm$core$Result$Err(
+									$lobanov$elm_taskport$TaskPort$JSError(errorValue));
+							} else {
+								var decodeError = _v1.a;
+								return $elm$core$Result$Err(
+									$lobanov$elm_taskport$TaskPort$InteropError(
+										$lobanov$elm_taskport$TaskPort$RuntimeError(
+											$elm$json$Json$Decode$errorToString(decodeError))));
+							}
+						} else {
+							return $lobanov$elm_taskport$TaskPort$runtimeError(
+								'unexpected status ' + $elm$core$String$fromInt(statusCode));
+						}
+					}
+				}
+			default:
+				var body = res.b;
+				var _v2 = A2($elm$json$Json$Decode$decodeString, valueDecoder, body);
+				if (_v2.$ === 'Ok') {
+					var returnValue = _v2.a;
+					return $elm$core$Result$Ok(returnValue);
+				} else {
+					var decodeError = _v2.a;
+					return $elm$core$Result$Err(
+						$lobanov$elm_taskport$TaskPort$InteropError(
+							A2($lobanov$elm_taskport$TaskPort$CannotDecodeValue, decodeError, body)));
+				}
+		}
+	});
+var $elm$http$Http$stringResolver = A2(_Http_expect, '', $elm$core$Basics$identity);
+var $lobanov$elm_taskport$TaskPort$buildHttpCall = F3(
+	function (_function, valueDecoder, args) {
+		return {
+			body: $elm$http$Http$jsonBody(args),
+			headers: _List_Nil,
+			method: 'POST',
+			resolver: $elm$http$Http$stringResolver(
+				$lobanov$elm_taskport$TaskPort$resolveResponse(valueDecoder)),
+			timeout: $elm$core$Maybe$Nothing,
+			url: $lobanov$elm_taskport$TaskPort$buildCallUrl(_function)
+		};
+	});
+var $elm$json$Json$Encode$null = _Json_encodeNull;
+var $elm$core$Task$fail = _Scheduler_fail;
+var $elm$http$Http$resultToTask = function (result) {
+	if (result.$ === 'Ok') {
+		var a = result.a;
+		return $elm$core$Task$succeed(a);
+	} else {
+		var x = result.a;
+		return $elm$core$Task$fail(x);
+	}
+};
+var $elm$http$Http$task = function (r) {
+	return A3(
+		_Http_toTask,
+		_Utils_Tuple0,
+		$elm$http$Http$resultToTask,
+		{allowCookiesFromOtherDomains: false, body: r.body, expect: r.resolver, headers: r.headers, method: r.method, timeout: r.timeout, tracker: $elm$core$Maybe$Nothing, url: r.url});
+};
+var $lobanov$elm_taskport$TaskPort$callNoArgsNS = function (details) {
+	return $elm$http$Http$task(
+		A3($lobanov$elm_taskport$TaskPort$buildHttpCall, details._function, details.valueDecoder, $elm$json$Json$Encode$null));
+};
+var $lobanov$elm_taskport$TaskPort$callNoArgs = function (details) {
+	return $lobanov$elm_taskport$TaskPort$callNoArgsNS(
+		{
+			_function: $lobanov$elm_taskport$TaskPort$DefaultNS(details._function),
+			valueDecoder: details.valueDecoder
+		});
+};
+var $author$project$Main$testFunction = $lobanov$elm_taskport$TaskPort$callNoArgs(
+	{_function: 'functionName', valueDecoder: $elm$json$Json$Decode$string});
 var $author$project$Main$init = function (_v0) {
 	return _Utils_Tuple2(
 		{
+			called: _List_Nil,
 			cameras: _List_fromArray(
 				['Camera 1']),
 			message: '',
 			selectedTab: 0
 		},
-		$elm$core$Platform$Cmd$none);
+		A2($elm$core$Task$attempt, $author$project$Main$TestFunction, $author$project$Main$testFunction));
 };
 var $author$project$Main$Recv = function (a) {
 	return {$: 'Recv', a: a};
 };
-var $elm$json$Json$Decode$string = _Json_decodeString;
 var $author$project$Main$messageReceiver = _Platform_incomingPort('messageReceiver', $elm$json$Json$Decode$string);
 var $author$project$Main$subscriptions = function (model) {
 	return $author$project$Main$messageReceiver($author$project$Main$Recv);
 };
+var $lobanov$elm_taskport$TaskPort$interopErrorToString = function (error) {
+	switch (error.$) {
+		case 'NotInstalled':
+			return 'NotInstalled: TaskPort JS component is not installed.';
+		case 'NotFound':
+			var msg = error.a;
+			return 'NotFound: ' + msg;
+		case 'NotCompatible':
+			var msg = error.a;
+			return 'NotCompatible: ' + msg;
+		case 'CannotDecodeValue':
+			var err = error.a;
+			var value = error.b;
+			return 'CannotDecodeValue: unable to decode JavaScript function return value.\n' + ('Value:\n' + (value + ('\n\n' + ('Decoding error:\n' + $elm$json$Json$Decode$errorToString(err)))));
+		default:
+			var msg = error.a;
+			return 'RuntimeError: ' + msg;
+	}
+};
+var $elm$core$Maybe$map = F2(
+	function (f, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return $elm$core$Maybe$Just(
+				f(value));
+		} else {
+			return $elm$core$Maybe$Nothing;
+		}
+	});
+var $elm$core$Maybe$withDefault = F2(
+	function (_default, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return value;
+		} else {
+			return _default;
+		}
+	});
+var $lobanov$elm_taskport$TaskPort$jsErrorToString = function (error) {
+	if (error.$ === 'ErrorValue') {
+		var v = error.a;
+		return 'JSON object:\n' + A2($elm$json$Json$Encode$encode, 4, v);
+	} else {
+		var name = error.a;
+		var o = error.b;
+		return name + (': ' + (o.message + ('\n' + (A2($elm$core$String$join, '\n', o.stackLines) + A2(
+			$elm$core$Maybe$withDefault,
+			'',
+			A2(
+				$elm$core$Maybe$map,
+				function (cause) {
+					return '\nCaused by:\n' + $lobanov$elm_taskport$TaskPort$jsErrorToString(cause);
+				},
+				o.cause))))));
+	}
+};
+var $lobanov$elm_taskport$TaskPort$errorToString = function (error) {
+	if (error.$ === 'InteropError') {
+		var e = error.a;
+		return $lobanov$elm_taskport$TaskPort$interopErrorToString(e);
+	} else {
+		var e = error.a;
+		return $lobanov$elm_taskport$TaskPort$jsErrorToString(e);
+	}
+};
+var $elm$core$Platform$Cmd$batch = _Platform_batch;
+var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
 var $elm$json$Json$Encode$string = _Json_wrap;
 var $author$project$Main$sendMessage = _Platform_outgoingPort('sendMessage', $elm$json$Json$Encode$string);
 var $author$project$Main$update = F2(
 	function (msg, model) {
 		switch (msg.$) {
-			case 'TabClicked':
-				var index = msg.a;
-				return _Utils_Tuple2(
-					_Utils_update(
-						model,
-						{selectedTab: index}),
-					$elm$core$Platform$Cmd$none);
 			case 'Send':
 				var sendMsg = msg.a;
 				return _Utils_Tuple2(
 					model,
 					$author$project$Main$sendMessage(sendMsg));
-			default:
+			case 'Recv':
 				var recvMsg = msg.a;
 				return _Utils_Tuple2(
 					_Utils_update(
 						model,
 						{message: recvMsg}),
 					$elm$core$Platform$Cmd$none);
+			case 'Call':
+				var callMsg = msg.a;
+				var k = msg.b;
+				return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+			case 'NewUUID':
+				var uuid = msg.a;
+				return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+			default:
+				var result = msg.a;
+				if (result.$ === 'Ok') {
+					var value = result.a;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{message: value}),
+						$elm$core$Platform$Cmd$none);
+				} else {
+					var error = result.a;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								message: $lobanov$elm_taskport$TaskPort$errorToString(error)
+							}),
+						$elm$core$Platform$Cmd$none);
+				}
 		}
 	});
 var $author$project$Main$Send = function (a) {
 	return {$: 'Send', a: a};
 };
-var $author$project$Main$TabClicked = function (a) {
-	return {$: 'TabClicked', a: a};
-};
 var $elm$html$Html$button = _VirtualDom_node('button');
-var $Dacit$material_components_web_elm$Material$Tab$Internal$Config = function (a) {
-	return {$: 'Config', a: a};
-};
-var $Dacit$material_components_web_elm$Material$Tab$config = $Dacit$material_components_web_elm$Material$Tab$Internal$Config(
-	{
-		active: false,
-		additionalAttributes: _List_Nil,
-		content: {icon: $elm$core$Maybe$Nothing, label: ''},
-		onClick: $elm$core$Maybe$Nothing
-	});
-var $Dacit$material_components_web_elm$Material$TabBar$Config = function (a) {
-	return {$: 'Config', a: a};
-};
-var $Dacit$material_components_web_elm$Material$TabBar$config = $Dacit$material_components_web_elm$Material$TabBar$Config(
-	{additionalAttributes: _List_Nil, align: $elm$core$Maybe$Nothing, indicatorSpansContent: false, minWidth: false, stacked: false});
 var $elm$html$Html$div = _VirtualDom_node('div');
-var $elm$core$List$head = function (list) {
-	if (list.b) {
-		var x = list.a;
-		var xs = list.b;
-		return $elm$core$Maybe$Just(x);
-	} else {
-		return $elm$core$Maybe$Nothing;
-	}
+var $TSFoster$elm_uuid$UUID$Urn = {$: 'Urn'};
+var $TSFoster$elm_uuid$UUID$UUID = F4(
+	function (a, b, c, d) {
+		return {$: 'UUID', a: a, b: b, c: c, d: d};
+	});
+var $elm$core$Basics$composeR = F3(
+	function (f, g, x) {
+		return g(
+			f(x));
+	});
+var $elm$random$Random$Generator = function (a) {
+	return {$: 'Generator', a: a};
+};
+var $elm$random$Random$map = F2(
+	function (func, _v0) {
+		var genA = _v0.a;
+		return $elm$random$Random$Generator(
+			function (seed0) {
+				var _v1 = genA(seed0);
+				var a = _v1.a;
+				var seed1 = _v1.b;
+				return _Utils_Tuple2(
+					func(a),
+					seed1);
+			});
+	});
+var $elm$random$Random$map4 = F5(
+	function (func, _v0, _v1, _v2, _v3) {
+		var genA = _v0.a;
+		var genB = _v1.a;
+		var genC = _v2.a;
+		var genD = _v3.a;
+		return $elm$random$Random$Generator(
+			function (seed0) {
+				var _v4 = genA(seed0);
+				var a = _v4.a;
+				var seed1 = _v4.b;
+				var _v5 = genB(seed1);
+				var b = _v5.a;
+				var seed2 = _v5.b;
+				var _v6 = genC(seed2);
+				var c = _v6.a;
+				var seed3 = _v6.b;
+				var _v7 = genD(seed3);
+				var d = _v7.a;
+				var seed4 = _v7.b;
+				return _Utils_Tuple2(
+					A4(func, a, b, c, d),
+					seed4);
+			});
+	});
+var $elm$core$Bitwise$shiftRightZfBy = _Bitwise_shiftRightZfBy;
+var $TSFoster$elm_uuid$UUID$forceUnsigned = $elm$core$Bitwise$shiftRightZfBy(0);
+var $elm$core$Bitwise$and = _Bitwise_and;
+var $elm$core$Basics$negate = function (n) {
+	return -n;
+};
+var $elm$random$Random$Seed = F2(
+	function (a, b) {
+		return {$: 'Seed', a: a, b: b};
+	});
+var $elm$random$Random$next = function (_v0) {
+	var state0 = _v0.a;
+	var incr = _v0.b;
+	return A2($elm$random$Random$Seed, ((state0 * 1664525) + incr) >>> 0, incr);
+};
+var $elm$core$Bitwise$xor = _Bitwise_xor;
+var $elm$random$Random$peel = function (_v0) {
+	var state = _v0.a;
+	var word = (state ^ (state >>> ((state >>> 28) + 4))) * 277803737;
+	return ((word >>> 22) ^ word) >>> 0;
+};
+var $elm$random$Random$int = F2(
+	function (a, b) {
+		return $elm$random$Random$Generator(
+			function (seed0) {
+				var _v0 = (_Utils_cmp(a, b) < 0) ? _Utils_Tuple2(a, b) : _Utils_Tuple2(b, a);
+				var lo = _v0.a;
+				var hi = _v0.b;
+				var range = (hi - lo) + 1;
+				if (!((range - 1) & range)) {
+					return _Utils_Tuple2(
+						(((range - 1) & $elm$random$Random$peel(seed0)) >>> 0) + lo,
+						$elm$random$Random$next(seed0));
+				} else {
+					var threshhold = (((-range) >>> 0) % range) >>> 0;
+					var accountForBias = function (seed) {
+						accountForBias:
+						while (true) {
+							var x = $elm$random$Random$peel(seed);
+							var seedN = $elm$random$Random$next(seed);
+							if (_Utils_cmp(x, threshhold) < 0) {
+								var $temp$seed = seedN;
+								seed = $temp$seed;
+								continue accountForBias;
+							} else {
+								return _Utils_Tuple2((x % range) + lo, seedN);
+							}
+						}
+					};
+					return accountForBias(seed0);
+				}
+			});
+	});
+var $elm$random$Random$maxInt = 2147483647;
+var $elm$random$Random$minInt = -2147483648;
+var $TSFoster$elm_uuid$UUID$randomU32 = A2(
+	$elm$random$Random$map,
+	$TSFoster$elm_uuid$UUID$forceUnsigned,
+	A2($elm$random$Random$int, $elm$random$Random$minInt, $elm$random$Random$maxInt));
+var $elm$core$Bitwise$or = _Bitwise_or;
+var $TSFoster$elm_uuid$UUID$toVariant1 = function (_v0) {
+	var a = _v0.a;
+	var b = _v0.b;
+	var c = _v0.c;
+	var d = _v0.d;
+	return A4(
+		$TSFoster$elm_uuid$UUID$UUID,
+		a,
+		b,
+		$TSFoster$elm_uuid$UUID$forceUnsigned(2147483648 | (1073741823 & c)),
+		d);
+};
+var $elm$core$Bitwise$shiftLeftBy = _Bitwise_shiftLeftBy;
+var $TSFoster$elm_uuid$UUID$toVersion = F2(
+	function (v, _v0) {
+		var a = _v0.a;
+		var b = _v0.b;
+		var c = _v0.c;
+		var d = _v0.d;
+		return A4(
+			$TSFoster$elm_uuid$UUID$UUID,
+			a,
+			$TSFoster$elm_uuid$UUID$forceUnsigned((v << 12) | (4294905855 & b)),
+			c,
+			d);
+	});
+var $TSFoster$elm_uuid$UUID$generator = A2(
+	$elm$random$Random$map,
+	A2(
+		$elm$core$Basics$composeR,
+		$TSFoster$elm_uuid$UUID$toVersion(4),
+		$TSFoster$elm_uuid$UUID$toVariant1),
+	A5($elm$random$Random$map4, $TSFoster$elm_uuid$UUID$UUID, $TSFoster$elm_uuid$UUID$randomU32, $TSFoster$elm_uuid$UUID$randomU32, $TSFoster$elm_uuid$UUID$randomU32, $TSFoster$elm_uuid$UUID$randomU32));
+var $elm$random$Random$initialSeed = function (x) {
+	var _v0 = $elm$random$Random$next(
+		A2($elm$random$Random$Seed, 0, 1013904223));
+	var state1 = _v0.a;
+	var incr = _v0.b;
+	var state2 = (state1 + x) >>> 0;
+	return $elm$random$Random$next(
+		A2($elm$random$Random$Seed, state2, incr));
+};
+var $elm$random$Random$step = F2(
+	function (_v0, seed) {
+		var generator = _v0.a;
+		return generator(seed);
+	});
+var $elm$core$String$cons = _String_cons;
+var $elm$core$String$fromChar = function (_char) {
+	return A2($elm$core$String$cons, _char, '');
+};
+var $elm$core$Bitwise$shiftRightBy = _Bitwise_shiftRightBy;
+var $elm$core$String$repeatHelp = F3(
+	function (n, chunk, result) {
+		return (n <= 0) ? result : A3(
+			$elm$core$String$repeatHelp,
+			n >> 1,
+			_Utils_ap(chunk, chunk),
+			(!(n & 1)) ? result : _Utils_ap(result, chunk));
+	});
+var $elm$core$String$repeat = F2(
+	function (n, chunk) {
+		return A3($elm$core$String$repeatHelp, n, chunk, '');
+	});
+var $elm$core$String$padLeft = F3(
+	function (n, _char, string) {
+		return _Utils_ap(
+			A2(
+				$elm$core$String$repeat,
+				n - $elm$core$String$length(string),
+				$elm$core$String$fromChar(_char)),
+			string);
+	});
+var $elm$core$String$fromList = _String_fromList;
+var $TSFoster$elm_uuid$UUID$toHex = F2(
+	function (acc, _int) {
+		toHex:
+		while (true) {
+			if (!_int) {
+				return $elm$core$String$fromList(acc);
+			} else {
+				var _char = function () {
+					var _v0 = 15 & _int;
+					switch (_v0) {
+						case 0:
+							return _Utils_chr('0');
+						case 1:
+							return _Utils_chr('1');
+						case 2:
+							return _Utils_chr('2');
+						case 3:
+							return _Utils_chr('3');
+						case 4:
+							return _Utils_chr('4');
+						case 5:
+							return _Utils_chr('5');
+						case 6:
+							return _Utils_chr('6');
+						case 7:
+							return _Utils_chr('7');
+						case 8:
+							return _Utils_chr('8');
+						case 9:
+							return _Utils_chr('9');
+						case 10:
+							return _Utils_chr('a');
+						case 11:
+							return _Utils_chr('b');
+						case 12:
+							return _Utils_chr('c');
+						case 13:
+							return _Utils_chr('d');
+						case 14:
+							return _Utils_chr('e');
+						default:
+							return _Utils_chr('f');
+					}
+				}();
+				var $temp$acc = A2($elm$core$List$cons, _char, acc),
+					$temp$int = _int >>> 4;
+				acc = $temp$acc;
+				_int = $temp$int;
+				continue toHex;
+			}
+		}
+	});
+var $TSFoster$elm_uuid$UUID$toStringWith = F2(
+	function (sep, _v0) {
+		var a = _v0.a;
+		var b = _v0.b;
+		var c = _v0.c;
+		var d = _v0.d;
+		return _Utils_ap(
+			A3(
+				$elm$core$String$padLeft,
+				8,
+				_Utils_chr('0'),
+				A2($TSFoster$elm_uuid$UUID$toHex, _List_Nil, a)),
+			_Utils_ap(
+				sep,
+				_Utils_ap(
+					A3(
+						$elm$core$String$padLeft,
+						4,
+						_Utils_chr('0'),
+						A2($TSFoster$elm_uuid$UUID$toHex, _List_Nil, b >>> 16)),
+					_Utils_ap(
+						sep,
+						_Utils_ap(
+							A3(
+								$elm$core$String$padLeft,
+								4,
+								_Utils_chr('0'),
+								A2($TSFoster$elm_uuid$UUID$toHex, _List_Nil, 65535 & b)),
+							_Utils_ap(
+								sep,
+								_Utils_ap(
+									A3(
+										$elm$core$String$padLeft,
+										4,
+										_Utils_chr('0'),
+										A2($TSFoster$elm_uuid$UUID$toHex, _List_Nil, c >>> 16)),
+									_Utils_ap(
+										sep,
+										_Utils_ap(
+											A3(
+												$elm$core$String$padLeft,
+												4,
+												_Utils_chr('0'),
+												A2($TSFoster$elm_uuid$UUID$toHex, _List_Nil, 65535 & c)),
+											A3(
+												$elm$core$String$padLeft,
+												8,
+												_Utils_chr('0'),
+												A2($TSFoster$elm_uuid$UUID$toHex, _List_Nil, d)))))))))));
+	});
+var $TSFoster$elm_uuid$UUID$toString = $TSFoster$elm_uuid$UUID$toStringWith('-');
+var $TSFoster$elm_uuid$UUID$toRepresentation = F2(
+	function (representation, uuid) {
+		switch (representation.$) {
+			case 'Canonical':
+				return $TSFoster$elm_uuid$UUID$toString(uuid);
+			case 'Urn':
+				return 'urn:uuid:' + $TSFoster$elm_uuid$UUID$toString(uuid);
+			case 'Guid':
+				return '{' + ($TSFoster$elm_uuid$UUID$toString(uuid) + '}');
+			default:
+				return A2($TSFoster$elm_uuid$UUID$toStringWith, '', uuid);
+		}
+	});
+var $author$project$Main$newUuid = function (_v0) {
+	return A2(
+		$TSFoster$elm_uuid$UUID$toRepresentation,
+		$TSFoster$elm_uuid$UUID$Urn,
+		A2(
+			$elm$random$Random$step,
+			$TSFoster$elm_uuid$UUID$generator,
+			$elm$random$Random$initialSeed(12345)).a);
 };
 var $elm$virtual_dom$VirtualDom$Normal = function (a) {
 	return {$: 'Normal', a: a};
@@ -5262,537 +6632,14 @@ var $elm$html$Html$Events$onClick = function (msg) {
 		'click',
 		$elm$json$Json$Decode$succeed(msg));
 };
-var $Dacit$material_components_web_elm$Material$Tab$setActive = F2(
-	function (active, _v0) {
-		var config_ = _v0.a;
-		return $Dacit$material_components_web_elm$Material$Tab$Internal$Config(
-			_Utils_update(
-				config_,
-				{active: active}));
-	});
-var $Dacit$material_components_web_elm$Material$Tab$setOnClick = F2(
-	function (onClick, _v0) {
-		var config_ = _v0.a;
-		return $Dacit$material_components_web_elm$Material$Tab$Internal$Config(
-			_Utils_update(
-				config_,
-				{
-					onClick: $elm$core$Maybe$Just(onClick)
-				}));
-	});
-var $Dacit$material_components_web_elm$Material$Tab$Internal$Tab = function (a) {
-	return {$: 'Tab', a: a};
-};
-var $Dacit$material_components_web_elm$Material$Tab$tab = F2(
-	function (_v0, content) {
-		var config_ = _v0.a;
-		return $Dacit$material_components_web_elm$Material$Tab$Internal$Tab(
-			$Dacit$material_components_web_elm$Material$Tab$Internal$Config(
-				_Utils_update(
-					config_,
-					{content: content})));
-	});
-var $elm$json$Json$Decode$andThen = _Json_andThen;
-var $elm$core$Maybe$andThen = F2(
-	function (callback, maybeValue) {
-		if (maybeValue.$ === 'Just') {
-			var value = maybeValue.a;
-			return callback(value);
-		} else {
-			return $elm$core$Maybe$Nothing;
-		}
-	});
-var $elm$json$Json$Decode$field = _Json_decodeField;
-var $elm$json$Json$Decode$at = F2(
-	function (fields, decoder) {
-		return A3($elm$core$List$foldr, $elm$json$Json$Decode$field, decoder, fields);
-	});
-var $elm$core$List$drop = F2(
-	function (n, list) {
-		drop:
-		while (true) {
-			if (n <= 0) {
-				return list;
-			} else {
-				if (!list.b) {
-					return list;
-				} else {
-					var x = list.a;
-					var xs = list.b;
-					var $temp$n = n - 1,
-						$temp$list = xs;
-					n = $temp$n;
-					list = $temp$list;
-					continue drop;
-				}
-			}
-		}
-	});
-var $elm$json$Json$Decode$fail = _Json_fail;
-var $elm$json$Json$Decode$int = _Json_decodeInt;
-var $Dacit$material_components_web_elm$Material$TabBar$activatedHandler = function (tabs) {
-	return $elm$core$Maybe$Just(
-		A2(
-			$elm$html$Html$Events$on,
-			'MDCTabBar:activated',
-			A2(
-				$elm$json$Json$Decode$andThen,
-				function (activatedIndex) {
-					var _v0 = A2(
-						$elm$core$Maybe$andThen,
-						function (_v1) {
-							var onClick = _v1.a.a.onClick;
-							return onClick;
-						},
-						$elm$core$List$head(
-							A2($elm$core$List$drop, activatedIndex, tabs)));
-					if (_v0.$ === 'Just') {
-						var msg = _v0.a;
-						return $elm$json$Json$Decode$succeed(msg);
-					} else {
-						return $elm$json$Json$Decode$fail('');
-					}
-				},
-				A2(
-					$elm$json$Json$Decode$at,
-					_List_fromArray(
-						['detail', 'index']),
-					$elm$json$Json$Decode$int))));
-};
-var $elm$core$Basics$composeL = F3(
-	function (g, f, x) {
-		return g(
-			f(x));
-	});
-var $elm$core$List$filter = F2(
-	function (isGood, list) {
-		return A3(
-			$elm$core$List$foldr,
-			F2(
-				function (x, xs) {
-					return isGood(x) ? A2($elm$core$List$cons, x, xs) : xs;
-				}),
-			_List_Nil,
-			list);
-	});
-var $elm$json$Json$Encode$int = _Json_wrap;
-var $elm$core$Maybe$map = F2(
-	function (f, maybe) {
-		if (maybe.$ === 'Just') {
-			var value = maybe.a;
-			return $elm$core$Maybe$Just(
-				f(value));
-		} else {
-			return $elm$core$Maybe$Nothing;
-		}
-	});
-var $elm$core$Tuple$pair = F2(
-	function (a, b) {
-		return _Utils_Tuple2(a, b);
-	});
-var $elm$virtual_dom$VirtualDom$property = F2(
-	function (key, value) {
-		return A2(
-			_VirtualDom_property,
-			_VirtualDom_noInnerHtmlOrFormAction(key),
-			_VirtualDom_noJavaScriptOrHtmlJson(value));
-	});
-var $elm$html$Html$Attributes$property = $elm$virtual_dom$VirtualDom$property;
-var $Dacit$material_components_web_elm$Material$TabBar$activeTabIndexProp = function (tabs) {
-	var activeTabIndex = A2(
-		$elm$core$Maybe$map,
-		$elm$core$Tuple$first,
-		$elm$core$List$head(
-			A2(
-				$elm$core$List$filter,
-				function (_v0) {
-					var active = _v0.b.a.a.active;
-					return active;
-				},
-				A2($elm$core$List$indexedMap, $elm$core$Tuple$pair, tabs))));
-	return A2(
-		$elm$core$Maybe$map,
-		A2(
-			$elm$core$Basics$composeL,
-			$elm$html$Html$Attributes$property('activeTabIndex'),
-			$elm$json$Json$Encode$int),
-		activeTabIndex);
-};
-var $Dacit$material_components_web_elm$Material$TabBar$anyActive = function (tabs) {
-	if (!tabs.b) {
-		return false;
-	} else {
-		var active = tabs.a.a.a.active;
-		var remainingTabs = tabs.b;
-		return active || $Dacit$material_components_web_elm$Material$TabBar$anyActive(remainingTabs);
-	}
-};
-var $elm$core$Basics$not = _Basics_not;
-var $Dacit$material_components_web_elm$Material$TabBar$setActive = F2(
-	function (active, _v0) {
-		var config_ = _v0.a.a;
-		return $Dacit$material_components_web_elm$Material$Tab$Internal$Tab(
-			$Dacit$material_components_web_elm$Material$Tab$Internal$Config(
-				_Utils_update(
-					config_,
-					{active: active})));
-	});
-var $Dacit$material_components_web_elm$Material$TabBar$enforceActiveHelper = function (tabs) {
-	if (!tabs.b) {
-		return _List_Nil;
-	} else {
-		var tab = tabs.a;
-		var active = tab.a.a.active;
-		var remainingTabs = tabs.b;
-		return (!active) ? A2(
-			$elm$core$List$cons,
-			tab,
-			$Dacit$material_components_web_elm$Material$TabBar$enforceActiveHelper(remainingTabs)) : A2(
-			$elm$core$List$cons,
-			tab,
-			A2(
-				$elm$core$List$map,
-				$Dacit$material_components_web_elm$Material$TabBar$setActive(false),
-				remainingTabs));
-	}
-};
-var $Dacit$material_components_web_elm$Material$TabBar$enforceActive = F2(
-	function (firstTab, otherTabs) {
-		var config_ = firstTab.a.a;
-		return (!$Dacit$material_components_web_elm$Material$TabBar$anyActive(
-			A2($elm$core$List$cons, firstTab, otherTabs))) ? A2(
-			$elm$core$List$cons,
-			A2($Dacit$material_components_web_elm$Material$TabBar$setActive, true, firstTab),
-			otherTabs) : $Dacit$material_components_web_elm$Material$TabBar$enforceActiveHelper(
-			A2($elm$core$List$cons, firstTab, otherTabs));
-	});
-var $elm$core$List$maybeCons = F3(
-	function (f, mx, xs) {
-		var _v0 = f(mx);
-		if (_v0.$ === 'Just') {
-			var x = _v0.a;
-			return A2($elm$core$List$cons, x, xs);
-		} else {
-			return xs;
-		}
-	});
-var $elm$core$List$filterMap = F2(
-	function (f, xs) {
-		return A3(
-			$elm$core$List$foldr,
-			$elm$core$List$maybeCons(f),
-			_List_Nil,
-			xs);
-	});
-var $elm$virtual_dom$VirtualDom$node = function (tag) {
-	return _VirtualDom_node(
-		_VirtualDom_noScript(tag));
-};
-var $elm$html$Html$node = $elm$virtual_dom$VirtualDom$node;
-var $elm$html$Html$Attributes$stringProperty = F2(
-	function (key, string) {
-		return A2(
-			_VirtualDom_property,
-			key,
-			$elm$json$Json$Encode$string(string));
-	});
-var $elm$html$Html$Attributes$class = $elm$html$Html$Attributes$stringProperty('className');
-var $Dacit$material_components_web_elm$Material$TabBar$rootCs = $elm$core$Maybe$Just(
-	$elm$html$Html$Attributes$class('mdc-tab-bar'));
-var $Dacit$material_components_web_elm$Material$TabBar$tabScrollerAlignCs = function (align) {
-	if (align.$ === 'Just') {
-		switch (align.a.$) {
-			case 'Start':
-				var _v1 = align.a;
-				return $elm$core$Maybe$Just(
-					$elm$html$Html$Attributes$class('mdc-tab-scroller--align-start'));
-			case 'End':
-				var _v2 = align.a;
-				return $elm$core$Maybe$Just(
-					$elm$html$Html$Attributes$class('mdc-tab-scroller--align-end'));
-			default:
-				var _v3 = align.a;
-				return $elm$core$Maybe$Just(
-					$elm$html$Html$Attributes$class('mdc-tab-scroller--align-center'));
-		}
-	} else {
-		return $elm$core$Maybe$Nothing;
-	}
-};
-var $Dacit$material_components_web_elm$Material$TabBar$tabScrollerCs = $elm$core$Maybe$Just(
-	$elm$html$Html$Attributes$class('mdc-tab-scroller'));
-var $elm$svg$Svg$Attributes$class = _VirtualDom_attribute('class');
-var $elm$virtual_dom$VirtualDom$map = _VirtualDom_map;
-var $elm$html$Html$map = $elm$virtual_dom$VirtualDom$map;
-var $Dacit$material_components_web_elm$Material$TabBar$tabIconElt = function (_v0) {
-	var icon = _v0.icon;
-	return A2(
-		$elm$core$Maybe$map,
-		$elm$html$Html$map($elm$core$Basics$never),
-		function () {
-			if (icon.$ === 'Just') {
-				if (icon.a.$ === 'Icon') {
-					var node = icon.a.a.node;
-					var attributes = icon.a.a.attributes;
-					var nodes = icon.a.a.nodes;
-					return $elm$core$Maybe$Just(
-						A2(
-							node,
-							A2(
-								$elm$core$List$cons,
-								$elm$html$Html$Attributes$class('mdc-tab__icon'),
-								attributes),
-							nodes));
-				} else {
-					var node = icon.a.a.node;
-					var attributes = icon.a.a.attributes;
-					var nodes = icon.a.a.nodes;
-					return $elm$core$Maybe$Just(
-						A2(
-							node,
-							A2(
-								$elm$core$List$cons,
-								$elm$svg$Svg$Attributes$class('mdc-tab__icon'),
-								attributes),
-							nodes));
-				}
-			} else {
-				return $elm$core$Maybe$Nothing;
-			}
-		}());
-};
-var $elm$html$Html$span = _VirtualDom_node('span');
-var $Dacit$material_components_web_elm$Material$TabBar$tabIndicatorContentElt = A2(
-	$elm$html$Html$span,
-	_List_fromArray(
-		[
-			$elm$html$Html$Attributes$class('mdc-tab-indicator__content'),
-			$elm$html$Html$Attributes$class('mdc-tab-indicator__content--underline')
-		]),
-	_List_Nil);
-var $Dacit$material_components_web_elm$Material$TabBar$tabIndicatorElt = function (config_) {
-	return $elm$core$Maybe$Just(
-		A2(
-			$elm$html$Html$span,
-			_List_fromArray(
-				[
-					$elm$html$Html$Attributes$class('mdc-tab-indicator')
-				]),
-			_List_fromArray(
-				[$Dacit$material_components_web_elm$Material$TabBar$tabIndicatorContentElt])));
-};
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
-var $Dacit$material_components_web_elm$Material$TabBar$tabTextLabelElt = function (_v0) {
-	var label = _v0.label;
-	return $elm$core$Maybe$Just(
-		A2(
-			$elm$html$Html$span,
-			_List_fromArray(
-				[
-					$elm$html$Html$Attributes$class('mdc-tab__text-label')
-				]),
-			_List_fromArray(
-				[
-					$elm$html$Html$text(label)
-				])));
-};
-var $Dacit$material_components_web_elm$Material$TabBar$tabContentElt = F3(
-	function (barConfig, config_, content) {
-		var indicatorSpansContent = barConfig.a.indicatorSpansContent;
-		return $elm$core$Maybe$Just(
-			A2(
-				$elm$html$Html$div,
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$class('mdc-tab__content')
-					]),
-				indicatorSpansContent ? A2(
-					$elm$core$List$filterMap,
-					$elm$core$Basics$identity,
-					_List_fromArray(
-						[
-							$Dacit$material_components_web_elm$Material$TabBar$tabIconElt(content),
-							$Dacit$material_components_web_elm$Material$TabBar$tabTextLabelElt(content),
-							$Dacit$material_components_web_elm$Material$TabBar$tabIndicatorElt(config_)
-						])) : A2(
-					$elm$core$List$filterMap,
-					$elm$core$Basics$identity,
-					_List_fromArray(
-						[
-							$Dacit$material_components_web_elm$Material$TabBar$tabIconElt(content),
-							$Dacit$material_components_web_elm$Material$TabBar$tabTextLabelElt(content)
-						]))));
-	});
-var $Dacit$material_components_web_elm$Material$TabBar$tabCs = $elm$core$Maybe$Just(
-	$elm$html$Html$Attributes$class('mdc-tab'));
-var $Dacit$material_components_web_elm$Material$TabBar$tabMinWidthCs = function (_v0) {
-	var minWidth = _v0.a.minWidth;
-	return minWidth ? $elm$core$Maybe$Just(
-		$elm$html$Html$Attributes$class('mdc-tab--min-width')) : $elm$core$Maybe$Nothing;
-};
-var $Dacit$material_components_web_elm$Material$TabBar$tabRippleElt = $elm$core$Maybe$Just(
-	A2(
-		$elm$html$Html$span,
-		_List_fromArray(
-			[
-				$elm$html$Html$Attributes$class('mdc-tab__ripple')
-			]),
-		_List_Nil));
-var $elm$virtual_dom$VirtualDom$attribute = F2(
-	function (key, value) {
-		return A2(
-			_VirtualDom_attribute,
-			_VirtualDom_noOnOrFormAction(key),
-			_VirtualDom_noJavaScriptOrHtmlUri(value));
-	});
-var $elm$html$Html$Attributes$attribute = $elm$virtual_dom$VirtualDom$attribute;
-var $Dacit$material_components_web_elm$Material$TabBar$tabRoleAttr = $elm$core$Maybe$Just(
-	A2($elm$html$Html$Attributes$attribute, 'role', 'tab'));
-var $Dacit$material_components_web_elm$Material$TabBar$tabStackedCs = function (_v0) {
-	var stacked = _v0.a.stacked;
-	return stacked ? $elm$core$Maybe$Just(
-		$elm$html$Html$Attributes$class('mdc-tab--stacked')) : $elm$core$Maybe$Nothing;
-};
-var $Dacit$material_components_web_elm$Material$TabBar$viewTab = F3(
-	function (index, barConfig, tab) {
-		var indicatorSpansContent = barConfig.a.indicatorSpansContent;
-		var tabConfig = tab.a;
-		var additionalAttributes = tabConfig.a.additionalAttributes;
-		var content = tabConfig.a.content;
-		return A3(
-			$elm$html$Html$node,
-			'mdc-tab',
-			_Utils_ap(
-				A2(
-					$elm$core$List$filterMap,
-					$elm$core$Basics$identity,
-					_List_fromArray(
-						[
-							$Dacit$material_components_web_elm$Material$TabBar$tabCs,
-							$Dacit$material_components_web_elm$Material$TabBar$tabRoleAttr,
-							$Dacit$material_components_web_elm$Material$TabBar$tabStackedCs(barConfig),
-							$Dacit$material_components_web_elm$Material$TabBar$tabMinWidthCs(barConfig)
-						])),
-				additionalAttributes),
-			A2(
-				$elm$core$List$filterMap,
-				$elm$core$Basics$identity,
-				indicatorSpansContent ? _List_fromArray(
-					[
-						A3($Dacit$material_components_web_elm$Material$TabBar$tabContentElt, barConfig, tabConfig, content),
-						$Dacit$material_components_web_elm$Material$TabBar$tabRippleElt
-					]) : _List_fromArray(
-					[
-						A3($Dacit$material_components_web_elm$Material$TabBar$tabContentElt, barConfig, tabConfig, content),
-						$Dacit$material_components_web_elm$Material$TabBar$tabIndicatorElt(tabConfig),
-						$Dacit$material_components_web_elm$Material$TabBar$tabRippleElt
-					])));
-	});
-var $Dacit$material_components_web_elm$Material$TabBar$tabScrollerScrollContentElt = F2(
-	function (barConfig, tabs) {
-		return A2(
-			$elm$html$Html$div,
-			_List_fromArray(
-				[
-					$elm$html$Html$Attributes$class('mdc-tab-scroller__scroll-content')
-				]),
-			A2(
-				$elm$core$List$indexedMap,
-				function (index) {
-					return A2($Dacit$material_components_web_elm$Material$TabBar$viewTab, index, barConfig);
-				},
-				tabs));
-	});
-var $Dacit$material_components_web_elm$Material$TabBar$tabScrollerScrollAreaElt = F2(
-	function (barConfig, tabs) {
-		return A2(
-			$elm$html$Html$div,
-			_List_fromArray(
-				[
-					$elm$html$Html$Attributes$class('mdc-tab-scroller__scroll-area')
-				]),
-			_List_fromArray(
-				[
-					A2($Dacit$material_components_web_elm$Material$TabBar$tabScrollerScrollContentElt, barConfig, tabs)
-				]));
-	});
-var $Dacit$material_components_web_elm$Material$TabBar$tabScroller = F3(
-	function (config_, align, tabs) {
-		return A2(
-			$elm$html$Html$div,
-			A2(
-				$elm$core$List$filterMap,
-				$elm$core$Basics$identity,
-				_List_fromArray(
-					[
-						$Dacit$material_components_web_elm$Material$TabBar$tabScrollerCs,
-						$Dacit$material_components_web_elm$Material$TabBar$tabScrollerAlignCs(align)
-					])),
-			_List_fromArray(
-				[
-					A2($Dacit$material_components_web_elm$Material$TabBar$tabScrollerScrollAreaElt, config_, tabs)
-				]));
-	});
-var $Dacit$material_components_web_elm$Material$TabBar$tablistRoleAttr = $elm$core$Maybe$Just(
-	A2($elm$html$Html$Attributes$attribute, 'role', 'tablist'));
-var $Dacit$material_components_web_elm$Material$TabBar$tabBar = F3(
-	function (config_, tab_, tabs_) {
-		var additionalAttributes = config_.a.additionalAttributes;
-		var align = config_.a.align;
-		var tabs = A2($Dacit$material_components_web_elm$Material$TabBar$enforceActive, tab_, tabs_);
-		return A3(
-			$elm$html$Html$node,
-			'mdc-tab-bar',
-			_Utils_ap(
-				A2(
-					$elm$core$List$filterMap,
-					$elm$core$Basics$identity,
-					_List_fromArray(
-						[
-							$Dacit$material_components_web_elm$Material$TabBar$rootCs,
-							$Dacit$material_components_web_elm$Material$TabBar$tablistRoleAttr,
-							$Dacit$material_components_web_elm$Material$TabBar$activeTabIndexProp(tabs),
-							$Dacit$material_components_web_elm$Material$TabBar$activatedHandler(tabs)
-						])),
-				additionalAttributes),
-			_List_fromArray(
-				[
-					A3($Dacit$material_components_web_elm$Material$TabBar$tabScroller, config_, align, tabs)
-				]));
-	});
-var $elm$core$Maybe$withDefault = F2(
-	function (_default, maybe) {
-		if (maybe.$ === 'Just') {
-			var value = maybe.a;
-			return value;
-		} else {
-			return _default;
-		}
-	});
 var $author$project$Main$view = function (model) {
 	return A2(
 		$elm$html$Html$div,
 		_List_Nil,
 		_List_fromArray(
 			[
-				A3(
-				$Dacit$material_components_web_elm$Material$TabBar$tabBar,
-				$Dacit$material_components_web_elm$Material$TabBar$config,
-				A2(
-					$Dacit$material_components_web_elm$Material$Tab$tab,
-					A2(
-						$Dacit$material_components_web_elm$Material$Tab$setOnClick,
-						$author$project$Main$TabClicked(0),
-						A2($Dacit$material_components_web_elm$Material$Tab$setActive, !model.selectedTab, $Dacit$material_components_web_elm$Material$Tab$config)),
-					{
-						icon: $elm$core$Maybe$Nothing,
-						label: A2(
-							$elm$core$Maybe$withDefault,
-							'',
-							$elm$core$List$head(model.cameras))
-					}),
-				_List_Nil),
 				A2(
 				$elm$html$Html$button,
 				_List_fromArray(
@@ -5803,6 +6650,22 @@ var $author$project$Main$view = function (model) {
 				_List_fromArray(
 					[
 						$elm$html$Html$text('Send')
+					])),
+				A2(
+				$elm$html$Html$button,
+				_List_Nil,
+				_List_fromArray(
+					[
+						$elm$html$Html$text(
+						$author$project$Main$newUuid(_Utils_Tuple0))
+					])),
+				A2(
+				$elm$html$Html$button,
+				_List_Nil,
+				_List_fromArray(
+					[
+						$elm$html$Html$text(
+						$author$project$Main$newUuid(_Utils_Tuple0))
 					])),
 				$elm$html$Html$text(model.message)
 			]));
