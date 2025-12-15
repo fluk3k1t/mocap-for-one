@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 use std::ffi::OsStr;
 use std::path::PathBuf;
 
+use crate::widgets::video_capture_modal::VideoCaptureModalEffect;
+
 pub struct UnityCameraModal {
     pub dialog: Option<FileDialog>,
     pub opened_path: Option<PathBuf>,
@@ -33,6 +35,10 @@ impl From<&UnityCameraModal> for UnityCameraModalConfig {
     }
 }
 
+pub enum UnityCameraModalEffect {
+    OnOpenCamera(CameraStream),
+}
+
 impl UnityCameraModal {
     pub fn new() -> Self {
         Self {
@@ -50,36 +56,42 @@ impl UnityCameraModal {
     pub fn show(
         &mut self,
         ctx: &egui::Context,
-        // camera_streams: &mut crate::widgets::CameraStreams,
-        // tree: &mut DockState<String>,
-    ) {
-        // if let Some(d) = &mut self.dialog {
-        //     d.show(ctx);
-        //     if d.selected() {
-        //         if let Some(path) = d.path() {
-        //             self.opened_path = Some(path.to_path_buf());
-        //             let config = VideoSourceConfig::MMAP {
-        //                 path: path.to_string_lossy().into_owned(),
-        //             };
+    ) -> Option<UnityCameraModalEffect> {
+        let mut ret = None;
 
-        //             match CameraStream::new(config) {
-        //                 Ok(stream) => {
-        //                     let name = path
-        //                         .file_name()
-        //                         .and_then(OsStr::to_str)
-        //                         .unwrap_or("unity_cam")
-        //                         .to_string();
-        //                     // camera_streams.streams.insert(name.clone(), stream);
-        //                     // tree.push_to_focused_leaf(name);
-        //                 }
-        //                 Err(err) => {
-        //                     eprintln!(
-        //                         "Failed to open Unity camera source: {err}"
-        //                     );
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
+        if let Some(dialog) = &mut self.dialog {
+            dialog.show(ctx);
+            if dialog.selected() {
+                if let Some(path) = dialog.path() {
+                    self.opened_path = Some(path.to_path_buf());
+                    let config = VideoSourceConfig::MMAP {
+                        path: path.to_string_lossy().into_owned(),
+                    };
+
+                    match CameraStream::new(
+                        path.to_string_lossy().into_owned(),
+                        config,
+                    ) {
+                        Ok(stream) => {
+                            // let name = path
+                            //     .file_name()
+                            //     .and_then(OsStr::to_str)
+                            //     .unwrap_or("unity_cam")
+                            //     .to_string();
+                            ret = Some(UnityCameraModalEffect::OnOpenCamera(
+                                stream,
+                            ));
+                        }
+                        Err(err) => {
+                            eprintln!(
+                                "Failed to open Unity camera source: {err}"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        ret
     }
 }

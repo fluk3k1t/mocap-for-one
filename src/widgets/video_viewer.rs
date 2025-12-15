@@ -1,20 +1,9 @@
-// mod app_state;
-// use app_state::{AppState, deserialize_app_state, serialize_app_state};
 use eframe::egui;
-use egui_tabs::Tabs;
-use mocap_for_one::{OpenCvCamera, Workloads};
-use std::{
-    fs::File,
-    io::{BufReader, BufWriter, ErrorKind},
-    thread,
-    time::Duration,
-};
+use mocap_for_one::OpenCvCamera;
 
-use anyhow::{Context, Result};
-
-// mod widgets;
-use mocap_for_one::workload::WorkLoad;
-// use widgets::VideoCaptureModal;
+pub enum VideoViewerEffect {
+    OnClose,
+}
 
 pub struct VideoViewer {}
 
@@ -23,7 +12,13 @@ impl VideoViewer {
         Self {}
     }
 
-    pub fn show(&mut self, ui: &mut egui::Ui, opencv_cam: &OpenCvCamera) {
+    pub fn show(
+        &mut self,
+        ui: &mut egui::Ui,
+        opencv_cam: &OpenCvCamera,
+    ) -> Option<VideoViewerEffect> {
+        let mut ret = None;
+
         let total_width = ui.available_width();
         let image_width = total_width * 0.8;
         let config_width = total_width * 0.2;
@@ -35,7 +30,7 @@ impl VideoViewer {
                 egui::Layout::top_down(egui::Align::Center),
                 |ui| {
                     ui.centered_and_justified(|ui| {
-                        if let Some(img) = opencv_cam.stream.latest_image() {
+                        if let Some(img) = opencv_cam.get_latest_frame() {
                             let texture = ui.ctx().load_texture(
                                 format!("cam_frame_"),
                                 img.clone(),
@@ -76,6 +71,10 @@ impl VideoViewer {
                 egui::Vec2::new(config_width, ui.available_height()),
                 egui::Layout::top_down(egui::Align::LEFT),
                 |ui| {
+                    if ui.button("Close").clicked() {
+                        ret = Some(VideoViewerEffect::OnClose);
+                    }
+
                     ui.heading("Camera Config");
                     ui.separator();
 
@@ -128,5 +127,7 @@ impl VideoViewer {
                 },
             );
         });
+
+        ret
     }
 }

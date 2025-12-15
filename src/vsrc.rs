@@ -120,3 +120,14 @@ impl VideoSource {
         }
     }
 }
+
+impl Drop for VideoSource {
+    fn drop(&mut self) {
+        match self {
+            VideoSource::MMAP(_) => {}
+            VideoSource::Capture(vcap) => {
+                vcap.release().expect("Failed to release video capture");
+            }
+        }
+    }
+}

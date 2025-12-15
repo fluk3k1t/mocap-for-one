@@ -5,18 +5,12 @@
   "workload": {
     "opencv_cams": [
       {
-        "name": "MacBook Airカメラ",
-        "video_source_config": {
-          "Capture": {
-            "index": 1200
-          }
-        }
-      },
-      {
-        "name": "Camo Camera",
-        "video_source_config": {
-          "Capture": {
-            "index": 1201
+        "camera_stream_config": {
+          "name": "MacBook Air Camera",
+          "video_source_config": {
+            "Capture": {
+              "index": 1200
+            }
           }
         }
       }

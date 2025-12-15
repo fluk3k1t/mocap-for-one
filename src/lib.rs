@@ -12,3 +12,6 @@ pub use python_utils::*;
 
 pub mod workload;
 pub use workload::*;
+
+pub mod opencv_cam;
+pub use opencv_cam::*;
