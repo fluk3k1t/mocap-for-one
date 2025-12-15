@@ -4,28 +4,4 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-# eframe = "0.33.2"
-eframe = "0.32"
-# egui_dock = "0.18"
-egui_tabs = "0.2.1"
-opencv = "0.97.2"
-chrono = "0.4.42"
-memmap2 = "0.9.9"
-egui_file = "0.23"
-anyhow = "1.0"
-serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.128"
-serde_with = "3.16.1"
-# egui_elm = "0.3.3"
-tokio = { version = "1", features = [ "full" ] }
-
-[dependencies.pyo3]
-version = "0.27.1"
-# this is necessary to automatically initialize the Python interpreter
-features = ["auto-initialize"]
-
-[patch.crates-io]
-egui_tabs = { git = "https://github.com/damus-io/egui-tabs", branch = "egui-0.32" }
-
-[profile.dev]
-opt-level = 3
+web-view = { git = "https://github.com/huytd/web-view" }
