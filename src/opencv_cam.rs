@@ -22,6 +22,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{CameraStream, CameraStreamConfig, VideoSourceConfig};
 
+pub type CharucoMarker = (Vector<Vector<Point2f>>, Vector<i32>);
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct OpenCvCameraConfig {
     pub camera_stream_config: CameraStreamConfig,
@@ -33,6 +35,7 @@ pub struct OpenCvCamera {
     // pub stream: CameraStream,
     charuco_board: Option<CharucoBoard>,
     r: tokio::sync::watch::Receiver<Mat>,
+    r_charuco_markers: tokio::sync::watch::Receiver<CharucoMarker>,
     pub camera_stream_config: CameraStreamConfig,
 }
 
@@ -42,11 +45,14 @@ impl TryFrom<OpenCvCameraConfig> for OpenCvCamera {
     fn try_from(config: OpenCvCameraConfig) -> Result<Self, Self::Error> {
         // let stream = config.camera_stream_config.try_into()?;
         let (s, r) = tokio::sync::watch::channel(Mat::default());
+        let (s_charuco_markers, r_charuco_markers) =
+            tokio::sync::watch::channel((Vector::new(), Vector::new()));
 
         Ok(Self {
             // stream,
             charuco_board: None,
             r,
+            r_charuco_markers,
             camera_stream_config: config.camera_stream_config,
         })
     }
@@ -62,11 +68,6 @@ impl From<&OpenCvCamera> for OpenCvCameraConfig {
 
 impl OpenCvCamera {
     pub fn new(stream: CameraStream) -> Self {
-        // thread::spawn(|| loop {
-        //     if let Ok(frame) = stream.read() {
-
-        //     }
-        // });
         let camera_stream_config = (&stream).into();
 
         let charuco_board = CharucoBoard::new_def(
@@ -101,79 +102,28 @@ impl OpenCvCamera {
                 &mut img,
             )
             .unwrap();
-        // img.
-        // save_mat_as_image(img);
-        // println!("ok");
+
         let charuco_board_clone = charuco_board.clone();
 
         let (s, r) = tokio::sync::watch::channel(Mat::default());
+        let (s_charuco_markers, r_charuco_markers) =
+            tokio::sync::watch::channel((Vector::new(), Vector::new()));
+
         thread::spawn(move || {
             let charuco_detector =
                 CharucoDetector::new_def(&charuco_board_clone)
                     .expect("Failed to create charuco detector");
 
             loop {
-                let mut frame = stream.get_latest_image();
-                // s.send(frame).unwrap();
-                let mut charuco_corners = Mat::default();
-                let mut charuco_ids = Mat::default();
-                // let mut marker_corners = Mat::default();
-                // let mut marker_ids = Mat::default();
-                let mut marker_corners = Vector::<Vector<Point2f>>::new();
-                let mut marker_ids = Vector::<i32>::new();
+                Self::update(
+                    &stream,
+                    &charuco_detector,
+                    &charuco_board_clone,
+                    &s,
+                    &s_charuco_markers,
+                );
 
-                charuco_detector
-                    .detect_board(
-                        &frame,
-                        &mut charuco_corners,
-                        &mut charuco_ids,
-                        &mut marker_corners,
-                        &mut marker_ids,
-                    )
-                    .expect("Failed to detect charuco board");
-
-                // 検知できたマーカーとcharucoボードの幾何から残りのマーカーを補完する
-                if marker_ids.len() > 0 {
-                    interpolate_corners_charuco_def(
-                        &mut marker_corners,
-                        &mut marker_ids,
-                        &frame,
-                        &Ptr::new(charuco_board_clone.clone()),
-                        &mut charuco_corners,
-                        &mut charuco_ids,
-                    )
-                    .expect("Failed to interpolate charuco corners");
-                }
-
-                // println!("{:?}", marker_corners);
-
-                draw_detected_markers(
-                    &mut frame,
-                    &marker_corners,
-                    &marker_ids,
-                    Scalar::new(0.0, 255.0, 0.0, 0.0),
-                )
-                .expect("Failed to draw detected markers");
-
-                let mut camera_matrix = Mat::default();
-                let mut dist_coeffs = Mat::default();
-
-                // if charuco_corners.size().unwrap().width < 4 {
-                //     continue;
-                // }
-                // calibrate_camera_charuco_def(
-                //     &mut charuco_corners,
-                //     &mut charuco_ids,
-                //     &Ptr::new(charuco_board_clone.clone()),
-                //     frame.size().unwrap(),
-                //     &mut camera_matrix,
-                //     &mut dist_coeffs,
-                // )
-                // .expect("Failed to calibrate camera");
-
-                println!("{:?}", camera_matrix);
-
-                s.send(frame).expect("Failed to send frame");
+                // thread::sleep(Duration::from_millis(10));
             }
         });
 
@@ -181,12 +131,78 @@ impl OpenCvCamera {
             // stream,
             charuco_board: Some(charuco_board),
             r,
+            r_charuco_markers,
             camera_stream_config,
         }
     }
 
     pub fn get_latest_frame(&self) -> Mat {
         self.r.borrow().clone()
+    }
+
+    pub fn get_latest_charuco_markers(&self) -> CharucoMarker {
+        self.r_charuco_markers.borrow().clone()
+    }
+
+    fn update(
+        stream: &CameraStream,
+        charuco_detector: &CharucoDetector,
+        charuco_board: &CharucoBoard,
+        s: &tokio::sync::watch::Sender<Mat>,
+        s_charuco_markers: &tokio::sync::watch::Sender<CharucoMarker>,
+    ) {
+        let mut frame = stream.get_latest_image();
+
+        let (marker_corners, marker_ids, charuco_corners, charuco_ids) =
+            Self::detect_charuco(&frame, charuco_detector, charuco_board)
+                .expect("Failed to detect charuco");
+
+        // draw_detected_markers(
+        //     &mut frame,
+        //     &marker_corners,
+        //     &marker_ids,
+        //     Scalar::new(0.0, 255.0, 0.0, 0.0),
+        // )
+        // .expect("Failed to draw detected markers");
+
+        s.send(frame).expect("Failed to send frame");
+        s_charuco_markers
+            .send((marker_corners, marker_ids))
+            .expect("Failed to send charuco corners");
+    }
+
+    fn detect_charuco(
+        frame: &Mat,
+        charuco_detector: &CharucoDetector,
+        charuco_board: &CharucoBoard,
+    ) -> Result<(Vector<Vector<Point2f>>, Vector<i32>, Mat, Mat), opencv::Error>
+    {
+        let mut charuco_corners = Mat::default();
+        let mut charuco_ids = Mat::default();
+        let mut marker_corners = Vector::<Vector<Point2f>>::new();
+        let mut marker_ids = Vector::<i32>::new();
+
+        charuco_detector.detect_board(
+            frame,
+            &mut charuco_corners,
+            &mut charuco_ids,
+            &mut marker_corners,
+            &mut marker_ids,
+        )?;
+
+        // 検知できたマーカーとcharucoボードの幾何から残りのマーカーを補完する
+        if marker_ids.len() > 0 {
+            interpolate_corners_charuco_def(
+                &mut marker_corners,
+                &mut marker_ids,
+                frame,
+                &Ptr::new(charuco_board.clone()),
+                &mut charuco_corners,
+                &mut charuco_ids,
+            )?;
+        }
+
+        Ok((marker_corners, marker_ids, charuco_corners, charuco_ids))
     }
 }
 

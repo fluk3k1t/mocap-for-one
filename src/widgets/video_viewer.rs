@@ -1,6 +1,8 @@
-use eframe::egui;
+use eframe::egui::{self, ColorImage};
 use mocap_for_one::{OpenCvCamera, mat_to_color_image};
-use opencv::core::MatTraitConst;
+use opencv::{
+    core::MatTraitConst, core::Scalar, objdetect::draw_detected_markers,
+};
 
 pub enum VideoViewerEffect {
     OnClose,
@@ -16,7 +18,7 @@ impl VideoViewer {
     pub fn show(
         &mut self,
         ui: &mut egui::Ui,
-        opencv_cam: &OpenCvCamera,
+        color_img: &ColorImage,
     ) -> Option<VideoViewerEffect> {
         let mut ret = None;
 
@@ -31,22 +33,34 @@ impl VideoViewer {
                 egui::Layout::top_down(egui::Align::Center),
                 |ui| {
                     ui.centered_and_justified(|ui| {
-                        let mat = opencv_cam.get_latest_frame();
+                        // let mut mat = opencv_cam.get_latest_frame();
 
-                        if mat.empty() {
-                            ui.label("No frame available yet");
-                            return;
-                        }
-                        let img = mat_to_color_image(mat)
-                            .expect("Failed to convert mat to color image");
+                        // if mat.empty() {
+                        //     ui.label("No frame available yet");
+                        //     return;
+                        // }
+
+                        // let (charuco_corners, marker_ids) =
+                        //     opencv_cam.get_latest_charuco_markers();
+
+                        // draw_detected_markers(
+                        //     &mut mat,
+                        //     &charuco_corners,
+                        //     &marker_ids,
+                        //     Scalar::new(0.0, 255.0, 0.0, 0.0),
+                        // )
+                        // .expect("Failed to draw detected markers");
+
+                        // let img = mat_to_color_image(mat)
+                        //     .expect("Failed to convert mat to color image");
 
                         let texture = ui.ctx().load_texture(
                             format!("cam_frame_"),
-                            img.clone(),
+                            color_img.clone(),
                             Default::default(),
                         );
 
-                        let img_size = img.size;
+                        let img_size = color_img.size;
                         let available =
                             egui::Vec2::new(image_width, available_height);
 

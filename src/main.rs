@@ -2,7 +2,9 @@ mod app_state;
 use app_state::{AppState, deserialize_app_state, serialize_app_state};
 use eframe::egui;
 use egui_tabs::Tabs;
-use mocap_for_one::Workloads;
+use mocap_for_one::{Workloads, mat_to_color_image};
+use opencv::core::Scalar;
+use opencv::{core::MatTraitConst, objdetect::draw_detected_markers};
 use std::{
     fs::File,
     io::{BufReader, BufWriter, ErrorKind},
@@ -86,16 +88,35 @@ impl eframe::App for App {
                 if let Some(selected_opencv_cam) =
                     self.state.workload.opencv_cams.get(selected_tab as usize)
                 {
-                    VideoViewer::new().show(ui, selected_opencv_cam).map(
-                        |eff| match eff {
-                            VideoViewerEffect::OnClose => {
-                                self.state
-                                    .workload
-                                    .opencv_cams
-                                    .remove(selected_tab as usize);
-                            }
-                        },
-                    );
+                    let mut mat = selected_opencv_cam.get_latest_frame();
+
+                    if mat.empty() {
+                        ui.label("No frame available yet");
+                        return;
+                    }
+
+                    let (charuco_corners, marker_ids) =
+                        selected_opencv_cam.get_latest_charuco_markers();
+
+                    draw_detected_markers(
+                        &mut mat,
+                        &charuco_corners,
+                        &marker_ids,
+                        Scalar::new(0.0, 255.0, 0.0, 0.0),
+                    )
+                    .expect("Failed to draw detected markers");
+
+                    let img = mat_to_color_image(mat)
+                        .expect("Failed to convert mat to color image");
+
+                    VideoViewer::new().show(ui, &img).map(|eff| match eff {
+                        VideoViewerEffect::OnClose => {
+                            self.state
+                                .workload
+                                .opencv_cams
+                                .remove(selected_tab as usize);
+                        }
+                    });
                 }
             }
         });
